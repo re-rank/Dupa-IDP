@@ -939,7 +939,7 @@ HTTPS_PROXY=http://proxy.company.com:8080
 - 모든 [기여자](https://github.com/your-org/project-atlas/contributors)들
 
 ## 📞 지원
-- 📧 이메일: hojinpark@re-rank.com
+- 📧 이메일: support@project-atlas.dev
 
 ---
 

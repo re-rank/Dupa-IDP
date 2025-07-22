@@ -9,7 +9,11 @@
       "Bash(true)",
       "Bash(PORT=3002 npm run dev)",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(dir)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

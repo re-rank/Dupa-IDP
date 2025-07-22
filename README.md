@@ -41,87 +41,87 @@ An open-source tool that automatically analyzes single or multi-repository codeb
 ## 📦 Installation
 
 ### Prerequisites
-- Node.js 18+ (권장: 20.x LTS)
-- npm 9+ 또는 yarn 3+
+- Node.js 18+ (recommended: 20.x LTS)
+- npm 9+ or yarn 3+
 - Git 2.25+
-- Redis 6+ (선택사항, 캐싱용)
-- 최소 4GB RAM
-- 최소 2GB 디스크 공간
+- Redis 6+ (optional, for caching)
+- Minimum 4GB RAM
+- Minimum 2GB disk space
 
-### 시스템별 설치 가이드
+### System-specific Installation Guide
 
 #### Windows
 ```bash
-# Node.js 설치 (https://nodejs.org/ 에서 다운로드)
-# Git 설치 (https://git-scm.com/download/win 에서 다운로드)
-# Redis 설치 (선택사항)
+# Install Node.js (download from https://nodejs.org/)
+# Install Git (download from https://git-scm.com/download/win)
+# Install Redis (optional)
 winget install Redis.Redis
 ```
 
 #### macOS
 ```bash
-# Homebrew 사용
+# Using Homebrew
 brew install node@20
 brew install git
-brew install redis # 선택사항
+brew install redis # optional
 ```
 
 #### Linux (Ubuntu/Debian)
 ```bash
-# Node.js 설치
+# Install Node.js
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# Git 설치
+# Install Git
 sudo apt-get install git
 
-# Redis 설치 (선택사항)
+# Install Redis (optional)
 sudo apt-get install redis-server
 ```
 
-### 설치 방법
+### Installation Steps
 
-#### 1. **저장소 클론**
+#### 1. **Clone the repository**
 ```bash
 git clone https://github.com/your-org/project-atlas.git
 cd project-atlas
 ```
 
-#### 2. **환경 설정**
+#### 2. **Configure environment**
 ```bash
-# 환경 변수 파일 생성
+# Create environment variables file
 cp .env.example .env
 
-# .env 파일 편집 (필요시)
+# Edit .env file (if needed)
 # BACKEND_PORT=3000
 # FRONTEND_PORT=5173
 # DATABASE_PATH=./data/atlas.db
 # REDIS_URL=redis://localhost:6379
 ```
 
-#### 3. **의존성 설치**
+#### 3. **Install dependencies**
 ```bash
-# 모든 의존성 한번에 설치
+# Install all dependencies at once
 npm run install:all
 
-# 또는 개별 설치
+# Or install individually
 cd backend && npm install
 cd ../frontend && npm install
 ```
 
-#### 4. **데이터베이스 초기화**
+#### 4. **Initialize database**
 ```bash
 cd backend
 npm run db:migrate
-npm run db:seed # 샘플 데이터 추가 (선택사항)
+npm run db:seed # Add sample data (optional)
 ```
 
-#### 5. **개발 서버 실행**
+#### 5. **Start development servers**
 ```bash
-# 프로젝트 루트에서
+# From project root
 npm run dev
 
-# 또는 개별 실행
+# Or run individually
 # Terminal 1: Backend
 cd backend && npm run dev
 
@@ -129,127 +129,127 @@ cd backend && npm run dev
 cd frontend && npm run dev
 ```
 
-#### 6. **접속 확인**
+#### 6. **Access verification**
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:3000
-- API 문서: http://localhost:3000/api-docs
+- API Documentation: http://localhost:3000/api-docs
 
-### 프로덕션 배포
+### Production Deployment
 
-#### 1. **빌드**
+#### 1. **Build**
 ```bash
-# 프론트엔드 빌드
+# Build frontend
 cd frontend && npm run build
 
-# 백엔드 빌드
+# Build backend
 cd backend && npm run build
 ```
 
-#### 2. **프로덕션 실행**
+#### 2. **Run in production**
 ```bash
-# PM2 사용 (권장)
+# Using PM2 (recommended)
 npm install -g pm2
 pm2 start ecosystem.config.js
 
-# 또는 직접 실행
+# Or run directly
 NODE_ENV=production node backend/dist/server.js
 ```
 
-#### 3. **Docker 배포**
+#### 3. **Docker deployment**
 ```bash
-# Docker 이미지 빌드
+# Build Docker images
 docker-compose build
 
-# 컨테이너 실행
+# Run containers
 docker-compose up -d
 
-# 로그 확인
+# View logs
 docker-compose logs -f
 ```
 
-## 🎯 사용 가이드
+## 🎯 Usage Guide
 
-### 기본 사용법
+### Basic Usage
 
-#### 1. **프로젝트 추가 및 분석**
+#### 1. **Add Project and Analyze**
 
-##### 단일 저장소 분석
+##### Single Repository Analysis
 ```bash
-# Git URL로 분석
-1. 웹 인터페이스에서 "New Project" 클릭
-2. Repository URL 입력: https://github.com/user/repo.git
-3. 분석 옵션 선택:
-   - Branch: main (기본값)
-   - Depth: Full analysis (전체 분석)
-   - Language filters: 필요시 특정 언어만 선택
-4. "Start Analysis" 클릭
+# Analyze via Git URL
+1. Click "New Project" in the web interface
+2. Enter Repository URL: https://github.com/user/repo.git
+3. Select analysis options:
+   - Branch: main (default)
+   - Depth: Full analysis
+   - Language filters: Select specific languages if needed
+4. Click "Start Analysis"
 
-# 로컬 저장소 분석
-1. "Upload Local Repository" 선택
-2. 폴더 선택 또는 드래그 앤 드롭
-3. 분석 시작
+# Local Repository Analysis
+1. Select "Upload Local Repository"
+2. Select folder or drag & drop
+3. Start analysis
 ```
 
-##### 멀티 저장소 분석 (마이크로서비스)
+##### Multi-Repository Analysis (Microservices)
 ```bash
-1. "Multi-Repository Mode" 활성화
-2. 저장소 목록 추가:
+1. Enable "Multi-Repository Mode"
+2. Add repository list:
    - Frontend: https://github.com/org/frontend.git
    - Backend: https://github.com/org/backend.git
    - Auth Service: https://github.com/org/auth.git
-3. "Analyze All" 클릭
-4. 서비스 간 연결 관계 자동 탐지
+3. Click "Analyze All"
+4. Automatically detect service connections
 ```
 
-#### 2. **분석 결과 확인**
+#### 2. **View Analysis Results**
 
-##### 대시보드 뷰
+##### Dashboard View
 ```
 📊 Overview Dashboard
-├── 기술 스택 요약
+├── Technology Stack Summary
 │   ├── Languages: JavaScript (45%), Python (30%), Go (25%)
 │   ├── Frameworks: React, Express, Django
 │   └── Databases: PostgreSQL, Redis, MongoDB
-├── 프로젝트 구조
+├── Project Structure
 │   ├── Total Files: 1,234
 │   ├── Lines of Code: 45,678
 │   └── Test Coverage: 78%
-└── 주요 지표
+└── Key Metrics
     ├── API Endpoints: 156
     ├── Database Tables: 45
     └── External Dependencies: 234
 ```
 
-##### 의존성 그래프
+##### Dependency Graph
 ```
 🔗 Interactive Dependency Graph
-- 노드 클릭: 상세 정보 표시
-- 드래그: 그래프 이동
-- 스크롤: 확대/축소
-- 필터 옵션:
+- Click node: Show detailed information
+- Drag: Move graph
+- Scroll: Zoom in/out
+- Filter options:
   - By Service Type (Frontend/Backend/Database)
   - By Technology (React/Node/Python)
   - By Connection Type (API/Database/Message Queue)
 ```
 
-##### API 엔드포인트 목록
+##### API Endpoints List
 ```
 📡 API Endpoints
 ├── /api/v1/users
-│   ├── GET - 사용자 목록 조회
-│   ├── POST - 새 사용자 생성
+│   ├── GET - Get user list
+│   ├── POST - Create new user
 │   └── Connected to: UserService, AuthService
 ├── /api/v1/products
-│   ├── GET - 상품 목록
-│   ├── PUT - 상품 정보 수정
+│   ├── GET - Product list
+│   ├── PUT - Update product info
 │   └── Database: products_table (PostgreSQL)
 ```
 
-#### 3. **고급 기능 활용**
+#### 3. **Advanced Features**
 
-##### 커스텀 필터링
+##### Custom Filtering
 ```javascript
-// 필터 예시
+// Filter example
 {
   "include": {
     "languages": ["JavaScript", "TypeScript"],
@@ -263,24 +263,24 @@ docker-compose logs -f
 }
 ```
 
-##### 실시간 모니터링
+##### Real-time Monitoring
 ```bash
-# Webhook 설정
+# Webhook Setup
 1. Settings > Integrations > Webhooks
 2. Add Webhook URL: https://your-domain.com/webhook
-3. Events 선택:
+3. Select events:
    - Code Push
    - Pull Request
    - Branch Creation
-4. 자동 재분석 활성화
+4. Enable automatic re-analysis
 ```
 
-##### API를 통한 프로그래밍 방식 접근
+##### Programmatic API Access
 ```javascript
-// API 사용 예시
+// API usage example
 const axios = require('axios');
 
-// 프로젝트 분석 시작
+// Start project analysis
 const startAnalysis = async () => {
   const response = await axios.post('http://localhost:3000/api/v1/projects', {
     repositoryUrl: 'https://github.com/user/repo.git',
@@ -294,20 +294,20 @@ const startAnalysis = async () => {
   return response.data.projectId;
 };
 
-// 분석 결과 조회
+// Get analysis results
 const getResults = async (projectId) => {
   const response = await axios.get(`http://localhost:3000/api/v1/projects/${projectId}/analysis`);
   return response.data;
 };
 
-// 의존성 그래프 데이터 가져오기
+// Get dependency graph data
 const getDependencyGraph = async (projectId) => {
   const response = await axios.get(`http://localhost:3000/api/v1/projects/${projectId}/dependencies`);
   return response.data;
 };
 ```
 
-##### 커스텀 분석 규칙 추가
+##### Add Custom Analysis Rules
 ```yaml
 # custom-rules.yaml
 rules:
@@ -329,78 +329,78 @@ rules:
         message: "Remove console.log in production"
 ```
 
-#### 4. **데이터 내보내기**
+#### 4. **Export Data**
 
-##### 다이어그램 내보내기
+##### Export Diagrams
 ```bash
-# PNG/SVG 형식
-1. 다이어그램 우측 상단 "Export" 버튼
-2. 형식 선택: PNG (고화질) / SVG (벡터)
-3. 옵션:
-   - Include Legend: 범례 포함
-   - Transparent Background: 투명 배경
-   - Custom Size: 사용자 정의 크기
+# PNG/SVG format
+1. Click "Export" button in top-right of diagram
+2. Select format: PNG (high quality) / SVG (vector)
+3. Options:
+   - Include Legend
+   - Transparent Background
+   - Custom Size
 ```
 
-##### 보고서 생성
+##### Generate Reports
 ```bash
-# PDF 보고서
+# PDF Reports
 1. Reports > Generate Report
-2. 템플릿 선택:
-   - Executive Summary (경영진용)
-   - Technical Deep Dive (개발팀용)
-   - Architecture Overview (아키텍처 문서)
-3. 포함할 섹션 선택
-4. "Generate PDF" 클릭
+2. Select template:
+   - Executive Summary
+   - Technical Deep Dive
+   - Architecture Overview
+3. Select sections to include
+4. Click "Generate PDF"
 
-# JSON/CSV 데이터 내보내기
+# JSON/CSV Data Export
 1. Data Export > Select Format
-2. 데이터 유형 선택:
-   - Full Analysis Data (전체 분석 데이터)
-   - API Endpoints Only (API 목록만)
-   - Dependencies Matrix (의존성 매트릭스)
+2. Select data type:
+   - Full Analysis Data
+   - API Endpoints Only
+   - Dependencies Matrix
 3. Download
 ```
 
-### CLI 사용법
+### CLI Usage
 
 ```bash
-# CLI 설치
+# Install CLI
 npm install -g @project-atlas/cli
 
-# 기본 명령어
+# Basic commands
 atlas analyze <repo-url> [options]
 
-# 예시
+# Example
 atlas analyze https://github.com/user/repo.git \
   --branch main \
   --output ./analysis-results \
   --format json
 
-# 멀티 저장소 분석
+# Multi-repository analysis
 atlas analyze-multi repos.txt \
   --output ./results \
   --parallel 4
 
-# 실시간 감시 모드
+# Real-time watch mode
 atlas watch ./my-project \
   --interval 60 \
   --notify slack
 ```
 
-### 통합 가이드
+### Integration Guide
 
 #### VS Code Extension
 ```bash
-# 설치
-1. VS Code Extensions에서 "Project Atlas" 검색
-2. Install 클릭
-3. 명령 팔레트에서 "Atlas: Analyze Current Project" 실행
+# Installation
+1. Search for "Project Atlas" in VS Code Extensions
+2. Click Install
+3. Run "Atlas: Analyze Current Project" from command palette
 ```
 
-#### CI/CD 파이프라인 통합
+#### CI/CD Pipeline Integration
 ```yaml
-# GitHub Actions 예시
+# GitHub Actions example
 name: Code Analysis
 on: [push, pull_request]
 
@@ -478,11 +478,11 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - Docker, Docker Compose
 - GitHub Actions, GitLab CI
 
-## 📡 API 문서
+## 📡 API Documentation
 
-### REST API 엔드포인트
+### REST API Endpoints
 
-#### 인증
+#### Authentication
 ```http
 POST /api/v1/auth/login
 Content-Type: application/json
@@ -499,9 +499,9 @@ Response:
 }
 ```
 
-#### 프로젝트 관리
+#### Project Management
 ```http
-# 프로젝트 목록 조회
+# Get project list
 GET /api/v1/projects
 Authorization: Bearer <token>
 
@@ -518,7 +518,7 @@ Response:
   ]
 }
 
-# 새 프로젝트 생성
+# Create new project
 POST /api/v1/projects
 Authorization: Bearer <token>
 Content-Type: application/json
@@ -534,28 +534,28 @@ Content-Type: application/json
   }
 }
 
-# 프로젝트 상세 조회
+# Get project details
 GET /api/v1/projects/{projectId}
 
-# 프로젝트 삭제
+# Delete project
 DELETE /api/v1/projects/{projectId}
 ```
 
-#### 분석 API
+#### Analysis API
 ```http
-# 분석 시작
+# Start analysis
 POST /api/v1/projects/{projectId}/analyze
 Authorization: Bearer <token>
 
 {
-  "force": true,  // 기존 분석 결과 무시
+  "force": true,  // Ignore existing analysis results
   "options": {
     "languages": ["JavaScript", "Python"],
     "frameworks": ["React", "Django"]
   }
 }
 
-# 분석 상태 확인
+# Check analysis status
 GET /api/v1/projects/{projectId}/analysis/status
 
 Response:
@@ -566,7 +566,7 @@ Response:
   "estimatedTime": "2 minutes"
 }
 
-# 분석 결과 조회
+# Get analysis results
 GET /api/v1/projects/{projectId}/analysis
 
 Response:
@@ -587,9 +587,9 @@ Response:
 }
 ```
 
-#### 의존성 그래프
+#### Dependency Graph
 ```http
-# 의존성 데이터 조회
+# Get dependency data
 GET /api/v1/projects/{projectId}/dependencies
 
 Response:
@@ -612,13 +612,13 @@ Response:
   ]
 }
 
-# 특정 서비스의 의존성
+# Get specific service dependencies
 GET /api/v1/projects/{projectId}/dependencies/{serviceId}
 ```
 
-#### 보고서 생성
+#### Report Generation
 ```http
-# PDF 보고서 생성
+# Generate PDF report
 POST /api/v1/projects/{projectId}/reports
 Content-Type: application/json
 
@@ -628,7 +628,7 @@ Content-Type: application/json
   "sections": ["overview", "dependencies", "apis", "security"],
   "options": {
     "includeCharts": true,
-    "language": "ko"
+    "language": "en"
   }
 }
 
@@ -639,30 +639,30 @@ Response:
   "downloadUrl": null
 }
 
-# 보고서 다운로드
+# Download report
 GET /api/v1/reports/{reportId}/download
 ```
 
 ### WebSocket API
 
 ```javascript
-// WebSocket 연결
+// WebSocket connection
 const ws = new WebSocket('ws://localhost:3000/ws');
 
-// 인증
+// Authentication
 ws.send(JSON.stringify({
   type: 'auth',
   token: 'your-jwt-token'
 }));
 
-// 실시간 분석 진행 상황 구독
+// Subscribe to real-time analysis progress
 ws.send(JSON.stringify({
   type: 'subscribe',
   channel: 'analysis',
   projectId: 'proj_123'
 }));
 
-// 메시지 수신
+// Receive messages
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
   
@@ -699,7 +699,7 @@ type Analysis {
   technologies: [Technology!]!
 }
 
-# Query 예시
+# Query example
 query GetProjectDetails($projectId: ID!) {
   project(id: $projectId) {
     id
@@ -723,7 +723,7 @@ query GetProjectDetails($projectId: ID!) {
   }
 }
 
-# Mutation 예시
+# Mutation example
 mutation StartAnalysis($projectId: ID!, $options: AnalysisOptions) {
   startAnalysis(projectId: $projectId, options: $options) {
     id
@@ -733,7 +733,7 @@ mutation StartAnalysis($projectId: ID!, $options: AnalysisOptions) {
 }
 ```
 
-### SDK 사용 예시
+### SDK Usage Examples
 
 #### JavaScript/TypeScript
 ```typescript
@@ -744,7 +744,7 @@ const client = new AtlasClient({
   apiKey: 'your-api-key'
 });
 
-// 프로젝트 분석
+// Analyze project
 const project = await client.projects.create({
   name: 'My Project',
   repositoryUrl: 'https://github.com/user/repo.git'
@@ -754,12 +754,12 @@ const analysis = await client.analysis.start(project.id, {
   deepAnalysis: true
 });
 
-// 진행 상황 모니터링
+// Monitor progress
 client.on('analysis:progress', (data) => {
   console.log(`Progress: ${data.progress}%`);
 });
 
-// 결과 조회
+// Get results
 const results = await client.analysis.getResults(project.id);
 ```
 
@@ -772,7 +772,7 @@ client = AtlasClient(
     api_key='your-api-key'
 )
 
-# 프로젝트 생성 및 분석
+# Create project and analyze
 project = client.projects.create(
     name='My Project',
     repository_url='https://github.com/user/repo.git'
@@ -783,49 +783,49 @@ analysis = client.analysis.start(
     options={'deep_analysis': True}
 )
 
-# 결과 대기
+# Wait for results
 results = client.analysis.wait_for_results(project.id)
 print(f"Found {len(results['apis'])} API endpoints")
 ```
 
 ### Rate Limiting
 
-API 요청은 다음과 같이 제한됩니다:
+API requests are limited as follows:
 
-- 인증된 사용자: 1000 requests/hour
-- 익명 사용자: 60 requests/hour
-- 분석 요청: 10 concurrent analyses
+- Authenticated users: 1000 requests/hour
+- Anonymous users: 60 requests/hour
+- Analysis requests: 10 concurrent analyses
 
-Rate limit 정보는 응답 헤더에 포함됩니다:
+Rate limit information is included in response headers:
 ```
 X-RateLimit-Limit: 1000
 X-RateLimit-Remaining: 999
 X-RateLimit-Reset: 1642089600
 ```
 
-## 🔧 문제 해결 및 FAQ
+## 🔧 Troubleshooting and FAQ
 
-### 자주 발생하는 문제
+### Common Issues
 
-#### 설치 관련
+#### Installation Related
 
-**Q: npm install 중 에러가 발생합니다**
+**Q: Error during npm install**
 ```bash
-# node_modules 삭제 후 재설치
+# Delete node_modules and reinstall
 rm -rf node_modules package-lock.json
 npm cache clean --force
 npm install
 
-# Python 빌드 도구 필요시 (Windows)
+# If Python build tools needed (Windows)
 npm install --global windows-build-tools
 ```
 
-**Q: Redis 연결 오류가 발생합니다**
+**Q: Redis connection error**
 ```bash
-# Redis 서버 상태 확인
+# Check Redis server status
 redis-cli ping
 
-# Redis 서버 시작
+# Start Redis server
 # Linux/macOS
 redis-server
 
@@ -833,58 +833,58 @@ redis-server
 redis-server.exe
 ```
 
-#### 분석 관련
+#### Analysis Related
 
-**Q: 분석이 너무 오래 걸립니다**
-- 대용량 저장소의 경우 shallow clone 사용
-- 불필요한 디렉토리 제외 (node_modules, vendor 등)
-- 특정 언어/파일만 분석하도록 필터 설정
+**Q: Analysis takes too long**
+- Use shallow clone for large repositories
+- Exclude unnecessary directories (node_modules, vendor, etc.)
+- Set filters to analyze specific languages/files only
 
-**Q: 메모리 부족 오류가 발생합니다**
+**Q: Out of memory error**
 ```bash
-# Node.js 메모리 제한 증가
+# Increase Node.js memory limit
 NODE_OPTIONS="--max-old-space-size=8192" npm run dev
 
-# 또는 환경 변수 설정
+# Or set environment variable
 export NODE_OPTIONS="--max-old-space-size=8192"
 ```
 
-**Q: Git 저장소 접근 권한 오류**
+**Q: Git repository access permission error**
 ```bash
-# SSH 키 설정 확인
+# Check SSH key setup
 ssh -T git@github.com
 
-# HTTPS 인증 정보 저장
+# Save HTTPS credentials
 git config --global credential.helper store
 
-# 프라이빗 저장소의 경우 토큰 사용
+# For private repositories, use token
 https://username:token@github.com/user/repo.git
 ```
 
-#### 성능 최적화
+#### Performance Optimization
 
-**Q: 프론트엔드가 느립니다**
-- 대용량 그래프의 경우 노드 수 제한
-- 가상화(virtualization) 활성화
-- 웹 워커 사용 설정
+**Q: Frontend is slow**
+- Limit node count for large graphs
+- Enable virtualization
+- Configure web worker usage
 
-**Q: API 응답이 느립니다**
-- Redis 캐싱 활성화
-- 데이터베이스 인덱스 최적화
-- API 응답 페이지네이션 사용
+**Q: API responses are slow**
+- Enable Redis caching
+- Optimize database indexes
+- Use API response pagination
 
-### 디버깅 팁
+### Debugging Tips
 
-#### 로그 레벨 설정
+#### Set Log Level
 ```bash
-# 개발 환경
+# Development environment
 LOG_LEVEL=debug npm run dev
 
-# 프로덕션 환경
+# Production environment
 LOG_LEVEL=error npm start
 ```
 
-#### 분석 엔진 디버그
+#### Debug Analysis Engine
 ```javascript
 // backend/src/config/debug.js
 module.exports = {
@@ -896,36 +896,36 @@ module.exports = {
 };
 ```
 
-#### 네트워크 문제 해결
+#### Network Issue Resolution
 ```bash
-# CORS 문제
-# .env 파일에 추가
+# CORS issues
+# Add to .env file
 CORS_ORIGIN=http://localhost:5173
 
-# 프록시 설정
+# Proxy settings
 HTTP_PROXY=http://proxy.company.com:8080
 HTTPS_PROXY=http://proxy.company.com:8080
 ```
 
-### 알려진 이슈
+### Known Issues
 
-1. **Windows에서 파일 경로 문제**
-   - 긴 경로명 지원 활성화 필요
-   - Git 설정: `git config --system core.longpaths true`
+1. **File path issues on Windows**
+   - Need to enable long path support
+   - Git configuration: `git config --system core.longpaths true`
 
-2. **macOS에서 파일 감시 제한**
-   - 시스템 제한 증가: `sudo sysctl -w kern.maxfiles=524288`
+2. **File watch limit on macOS**
+   - Increase system limit: `sudo sysctl -w kern.maxfiles=524288`
 
-3. **대용량 모노레포 분석**
-   - 부분 분석 모드 사용 권장
-   - 메모리 및 CPU 제한 설정 필요
+3. **Large monorepo analysis**
+   - Partial analysis mode recommended
+   - Memory and CPU limits required
 
-### 도움 받기
+### Getting Help
 
-- 📧 이메일: support@project-atlas.dev
-- 💬 Discord: [커뮤니티 참여](https://discord.gg/project-atlas)
-- 🐛 버그 리포트: [GitHub Issues](https://github.com/your-org/project-atlas/issues)
-- 📖 상세 문서: [docs.project-atlas.dev](https://docs.project-atlas.dev)
+- 📧 Email: support@project-atlas.dev
+- 💬 Discord: [Join our community](https://discord.gg/project-atlas)
+- 🐛 Bug reports: [GitHub Issues](https://github.com/your-org/project-atlas/issues)
+- 📖 Documentation: [docs.project-atlas.dev](https://docs.project-atlas.dev)
 
 ## 📄 License
 
