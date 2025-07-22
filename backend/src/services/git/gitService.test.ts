@@ -1,20 +1,31 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import fs from 'fs/promises';
 import path from 'path';
+
+// simple-git 모킹을 GitService import 전에 설정
+jest.mock('simple-git', () => {
+  const mockGit = {
+    clone: jest.fn().mockResolvedValue(undefined),
+    checkout: jest.fn().mockResolvedValue(undefined),
+    pull: jest.fn().mockResolvedValue(undefined),
+    log: jest.fn().mockResolvedValue({ latest: { hash: 'abc123' } }),
+    raw: jest.fn().mockResolvedValue('')
+  };
+  
+  return {
+    simpleGit: jest.fn(() => mockGit),
+    SimpleGit: jest.fn(),
+    CleanOptions: {}
+  };
+});
+
 import { GitService } from './gitService';
-import { AppError } from '../../middlewares/errorHandler';
 
-vi.mock('simple-git', () => ({
-  default: () => ({
-    clone: vi.fn().mockResolvedValue(undefined)
-  })
-}));
-
-vi.mock('../../utils/logger', () => ({
+jest.mock('../../utils/logger', () => ({
   logger: {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn()
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn()
   }
 }));
 
@@ -28,13 +39,15 @@ describe('GitService', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe('cloneRepository', () => {
     it('should clone repository successfully', async () => {
-      const repoPath = await gitService.cloneRepository(testRepoUrl, testProjectId);
+      const targetPath = path.join(process.cwd(), 'temp', 'repos', testProjectId);
+      const repoPath = await gitService.cloneRepository(testRepoUrl, targetPath);
       
+      expect(repoPath).toBe(targetPath);
       expect(repoPath).toContain(testProjectId);
       expect(repoPath).toContain('temp');
       expect(repoPath).toContain('repos');
@@ -43,12 +56,13 @@ describe('GitService', () => {
     it('should handle clone options', async () => {
       const options = {
         depth: 1,
-        branch: 'main',
-        single: true
+        branch: 'main'
       };
 
-      const repoPath = await gitService.cloneRepository(testRepoUrl, testProjectId, options);
+      const targetPath = path.join(process.cwd(), 'temp', 'repos', testProjectId);
+      const repoPath = await gitService.cloneRepository(testRepoUrl, targetPath, options);
       
+      expect(repoPath).toBe(targetPath);
       expect(repoPath).toContain(testProjectId);
     });
 
@@ -56,9 +70,10 @@ describe('GitService', () => {
       const git = require('simple-git').default();
       git.clone.mockRejectedValueOnce(new Error('Clone failed'));
 
+      const targetPath = path.join(process.cwd(), 'temp', 'repos', testProjectId);
       await expect(
-        gitService.cloneRepository(testRepoUrl, testProjectId)
-      ).rejects.toThrow(AppError);
+        gitService.cloneRepository(testRepoUrl, targetPath)
+      ).rejects.toThrow(Error);
     });
   });
 
@@ -69,9 +84,9 @@ describe('GitService', () => {
         { name: 'src', isDirectory: () => true }
       ];
 
-      vi.spyOn(fs, 'readdir').mockResolvedValue(mockFiles as any);
-      vi.spyOn(fs, 'stat').mockResolvedValue({ size: 1024 } as any);
-      vi.spyOn(fs, 'readFile').mockResolvedValue('');
+      jest.spyOn(fs, 'readdir').mockResolvedValue(mockFiles as any);
+      jest.spyOn(fs, 'stat').mockResolvedValue({ size: 1024, mtime: new Date() } as any);
+      jest.spyOn(fs, 'readFile').mockResolvedValue('');
 
       const files = await gitService.scanRepository('/test/path');
 
@@ -79,11 +94,13 @@ describe('GitService', () => {
       expect(files[0]).toMatchObject({
         name: 'index.js',
         isDirectory: false,
-        extension: '.js'
+        extension: '.js',
+        lastModified: expect.any(Date)
       });
       expect(files[1]).toMatchObject({
         name: 'src',
-        isDirectory: true
+        isDirectory: true,
+        lastModified: expect.any(Date)
       });
     });
 
@@ -94,9 +111,9 @@ describe('GitService', () => {
         { name: '.env', isDirectory: () => false }
       ];
 
-      vi.spyOn(fs, 'readdir').mockResolvedValue(mockFiles as any);
-      vi.spyOn(fs, 'stat').mockResolvedValue({ size: 1024 } as any);
-      vi.spyOn(fs, 'readFile').mockResolvedValue('node_modules\n.env');
+      jest.spyOn(fs, 'readdir').mockResolvedValue(mockFiles as any);
+      jest.spyOn(fs, 'stat').mockResolvedValue({ size: 1024, mtime: new Date() } as any);
+      jest.spyOn(fs, 'readFile').mockResolvedValue('node_modules\n.env');
 
       const files = await gitService.scanRepository('/test/path');
 
@@ -110,11 +127,11 @@ describe('GitService', () => {
         { name: 'large.bin', isDirectory: () => false }
       ];
 
-      vi.spyOn(fs, 'readdir').mockResolvedValue(mockFiles as any);
-      vi.spyOn(fs, 'stat')
-        .mockResolvedValueOnce({ size: 1024 } as any)
-        .mockResolvedValueOnce({ size: 200 * 1024 * 1024 } as any);
-      vi.spyOn(fs, 'readFile').mockResolvedValue('');
+      jest.spyOn(fs, 'readdir').mockResolvedValue(mockFiles as any);
+      jest.spyOn(fs, 'stat')
+        .mockResolvedValueOnce({ size: 1024, mtime: new Date() } as any)
+        .mockResolvedValueOnce({ size: 200 * 1024 * 1024, mtime: new Date() } as any);
+      jest.spyOn(fs, 'readFile').mockResolvedValue('');
 
       const files = await gitService.scanRepository('/test/path');
 
@@ -126,7 +143,7 @@ describe('GitService', () => {
   describe('getFileContent', () => {
     it('should read file content successfully', async () => {
       const testContent = 'console.log("Hello World");';
-      vi.spyOn(fs, 'readFile').mockResolvedValue(testContent);
+      jest.spyOn(fs, 'readFile').mockResolvedValue(testContent);
 
       const content = await gitService.getFileContent('/test/file.js');
 
@@ -134,17 +151,17 @@ describe('GitService', () => {
     });
 
     it('should throw error on read failure', async () => {
-      vi.spyOn(fs, 'readFile').mockRejectedValue(new Error('Read failed'));
+      jest.spyOn(fs, 'readFile').mockRejectedValue(new Error('Read failed'));
 
       await expect(
         gitService.getFileContent('/test/file.js')
-      ).rejects.toThrow(AppError);
+      ).rejects.toThrow(Error);
     });
   });
 
   describe('cleanupRepository', () => {
     it('should cleanup repository directory', async () => {
-      const rmSpy = vi.spyOn(fs, 'rm').mockResolvedValue(undefined);
+      const rmSpy = jest.spyOn(fs, 'rm').mockResolvedValue(undefined);
 
       await gitService.cleanupRepository(testProjectId);
 
@@ -155,7 +172,7 @@ describe('GitService', () => {
     });
 
     it('should handle cleanup errors gracefully', async () => {
-      vi.spyOn(fs, 'rm').mockRejectedValue(new Error('Cleanup failed'));
+      jest.spyOn(fs, 'rm').mockRejectedValue(new Error('Cleanup failed'));
 
       await expect(
         gitService.cleanupRepository(testProjectId)

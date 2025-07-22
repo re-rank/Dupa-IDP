@@ -149,7 +149,7 @@ router.get('/:projectId/apis', async (req: Request, res: Response, next: NextFun
     }
 
     // TODO: Implement API endpoints retrieval
-    const apis = [];
+    const apis: any[] = [];
 
     res.json({
       success: true,

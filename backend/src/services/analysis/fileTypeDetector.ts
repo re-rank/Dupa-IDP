@@ -101,8 +101,6 @@ export class FileTypeDetector {
     // Templates
     '.vue': 'Vue',
     '.svelte': 'Svelte',
-    '.jsx': 'JSX',
-    '.tsx': 'TSX',
 
     // Data formats
     '.json': 'JSON',

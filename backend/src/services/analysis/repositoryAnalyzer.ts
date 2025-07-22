@@ -8,7 +8,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { gitService, FileInfo } from '../git/gitService';
-import { FileTypeDetector, FileType } from './fileTypeDetector';
+import { FileTypeDetector, FileTypeInfo } from './fileTypeDetector';
 import { FrameworkDetector, FrameworkInfo } from './frameworkDetector';
 import { logger } from '../../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
@@ -110,7 +110,7 @@ export class RepositoryAnalyzer {
 
     try {
       // Use existing gitService for cloning
-      await gitService.cloneRepository(url, repoPath, branch);
+      await gitService.cloneRepository(url, repoPath, { branch });
       return repoPath;
     } catch (error: any) {
       throw new AppError(`Failed to clone repository: ${error.message}`, 500, 'CLONE_FAILED');
@@ -139,13 +139,13 @@ export class RepositoryAnalyzer {
    * Detect frameworks (implements design.md interface)
    */
   async detectFrameworks(files: FileInfo[]): Promise<Framework[]> {
-    const frameworkDetector = new FrameworkDetector();
-    const detections = await frameworkDetector.detectFrameworks(
-      files.map(f => f.relativePath)
+    const detections = await FrameworkDetector.detectFrameworks(
+      '', // root path not needed for detection
+      files
     );
 
     // Convert to design.md Framework format
-    return detections.map(detection => ({
+    return detections.map((detection: any) => ({
       name: detection.name,
       version: detection.version,
       type: this.mapFrameworkType(detection.type),
@@ -177,7 +177,7 @@ export class RepositoryAnalyzer {
     const stats = this.calculateStats(files);
     const directories = this.extractDirectories(files);
     const frameworks = await this.detectFrameworks(files);
-    const projectType = await this.detectProjectType(files);
+    const projectType = await RepositoryAnalyzer.detectProjectType(files);
 
     const structure: RepositoryStructure = {
       rootPath: repoPath,
@@ -315,7 +315,7 @@ export class RepositoryAnalyzer {
   /**
    * Detect project type
    */
-  async detectProjectType(
+  static async detectProjectType(
     files: FileInfo[]
   ): Promise<{ type: string; confidence: number }> {
     const configFiles = files.filter(f => !f.isDirectory).map(f => f.name);
@@ -369,7 +369,7 @@ export class RepositoryAnalyzer {
   /**
    * Find important files in the repository
    */
-  findImportantFiles(files: FileInfo[]): Record<string, string[]> {
+  static findImportantFiles(files: FileInfo[]): Record<string, string[]> {
     const importantFiles: Record<string, string[]> = {
       entry: [],
       configuration: [],
@@ -453,3 +453,4 @@ interface FileStructure {
 }
 
 export const repositoryAnalyzer = new RepositoryAnalyzer();
+export type { FileTypeInfo as FileType };

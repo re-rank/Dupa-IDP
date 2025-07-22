@@ -4,17 +4,6 @@ import { useQuery } from 'react-query';
 import { api } from '../services/api';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
 
-interface DashboardStats {
-  totalProjects: number;
-  activeAnalyses: number;
-  completedAnalyses: number;
-  recentProjects: Array<{
-    id: string;
-    name: string;
-    status: string;
-    createdAt: string;
-  }>;
-}
 
 const Dashboard: React.FC = () => {
   const { data: projects, isLoading: projectsLoading } = useQuery(
@@ -46,7 +35,7 @@ const Dashboard: React.FC = () => {
     },
     {
       name: 'Active Analyses',
-      value: projects?.filter(p => p.status === 'analyzing').length || 0,
+      value: projects?.filter((p: any) => p.status === 'analyzing').length || 0,
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -56,7 +45,7 @@ const Dashboard: React.FC = () => {
     },
     {
       name: 'Completed',
-      value: projects?.filter(p => p.status === 'completed').length || 0,
+      value: projects?.filter((p: any) => p.status === 'completed').length || 0,
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -134,7 +123,7 @@ const Dashboard: React.FC = () => {
               </div>
             ) : projects && projects.length > 0 ? (
               <div className="space-y-4">
-                {projects.slice(0, 5).map((project) => (
+                {projects.slice(0, 5).map((project: any) => (
                   <div key={project.id} className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <Link

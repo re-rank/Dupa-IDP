@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { logger } from '../utils/logger';
 import { AppError } from '../middlewares/errorHandler';
 import { asyncHandler } from '../middlewares/asyncHandler';
@@ -27,7 +27,7 @@ const projectIdSchema = Joi.object({
 
 // GET /api/projects - List all projects
 router.get('/', 
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { status, limit = 50, offset = 0 } = req.query;
     
     let projects;
@@ -64,7 +64,7 @@ router.get('/',
 // GET /api/projects/:id - Get specific project
 router.get('/:id', 
   validate({ params: projectIdSchema }),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const project = await ProjectModel.findById(id);
@@ -95,7 +95,7 @@ router.get('/:id',
 // POST /api/projects - Create new project
 router.post('/', 
   validate({ body: createProjectSchema }),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { name, repositoryUrl, repositoryType, branch } = req.body;
 
     // Check if project with same repository URL already exists
@@ -136,7 +136,7 @@ router.put('/:id',
     params: projectIdSchema,
     body: updateProjectSchema 
   }),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
     // Check if project exists
@@ -162,7 +162,7 @@ router.put('/:id',
 // DELETE /api/projects/:id - Delete project
 router.delete('/:id', 
   validate({ params: projectIdSchema }),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
     // Check if project exists
@@ -191,7 +191,7 @@ router.delete('/:id',
 // POST /api/projects/:id/analyze - Start project analysis
 router.post('/:id/analyze',
   validate({ params: projectIdSchema }),
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const { force = false, options = {} } = req.body;
 

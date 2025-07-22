@@ -1,4 +1,4 @@
-import simpleGit, { SimpleGit, CleanOptions } from 'simple-git';
+import { simpleGit, SimpleGit, CleanOptions } from 'simple-git';
 import fs from 'fs/promises';
 import path from 'path';
 import { logger } from '../../utils/logger';
@@ -361,7 +361,37 @@ export class GitService {
     // Cleanup any temporary files or connections
     logger.info('Git service cleanup completed');
   }
+
+  async cleanupRepository(projectId: string): Promise<void> {
+    try {
+      const tempDir = path.join(process.cwd(), 'temp', 'repos', projectId);
+      await fs.rm(tempDir, { recursive: true, force: true });
+      logger.info(`Cleaned up repository for project: ${projectId}`);
+    } catch (error) {
+      logger.warn(`Failed to cleanup repository for project ${projectId}:`, error);
+    }
+  }
+
+  async getFileContent(filePath: string): Promise<string> {
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      return content;
+    } catch (error) {
+      logger.error(`Failed to read file ${filePath}:`, error);
+      throw new Error(`Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }
 
 // Create singleton instance
-export const gitService = new GitService();
+let _gitService: GitService | null = null;
+
+export const getGitService = (): GitService => {
+  if (!_gitService) {
+    _gitService = new GitService();
+  }
+  return _gitService;
+};
+
+// For backward compatibility
+export const gitService = process.env.NODE_ENV === 'test' ? null : getGitService();

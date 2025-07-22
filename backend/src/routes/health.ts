@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middlewares/asyncHandler';
 import { checkDatabaseHealth, getDatabaseStats } from '../database/connection';
 import { CacheService } from '../services/redis/redisClient';
@@ -10,7 +10,7 @@ const router = Router();
 
 // Basic health check
 router.get('/', 
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const health = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -25,7 +25,7 @@ router.get('/',
 
 // Detailed health check
 router.get('/detailed', 
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const startTime = Date.now();
 
     // Check database health
@@ -100,15 +100,16 @@ router.get('/detailed',
 
 // Readiness check (for Kubernetes)
 router.get('/ready', 
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const dbHealth = await checkDatabaseHealth();
     
     if (!dbHealth) {
-      return res.status(503).json({
+      res.status(503).json({
         status: 'not_ready',
         reason: 'Database not available',
         timestamp: new Date().toISOString()
       });
+      return;
     }
 
     res.json({
@@ -120,7 +121,7 @@ router.get('/ready',
 
 // Liveness check (for Kubernetes)
 router.get('/live', 
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     // Simple liveness check - if we can respond, we're alive
     res.json({
       status: 'alive',
@@ -132,7 +133,7 @@ router.get('/live',
 
 // Metrics endpoint (Prometheus-style)
 router.get('/metrics', 
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     try {
       const [projectStats, analysisStats, dbStats] = await Promise.all([
         ProjectModel.getProjectStats(),

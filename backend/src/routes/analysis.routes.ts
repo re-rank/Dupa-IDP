@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { validate } from '../middlewares/validator';
 import Joi from 'joi';
 import { asyncHandler } from '../middlewares/asyncHandler';
@@ -22,8 +22,8 @@ const analyzeSchema = Joi.object({
 
 router.post(
   '/projects/:id/analyze',
-  validate({ params: { id: Joi.string().required() }, body: analyzeSchema }),
-  asyncHandler(async (req, res) => {
+  validate({ params: Joi.object({ id: Joi.string().required() }), body: analyzeSchema }),
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const { branch, depth } = req.body;
 
@@ -46,8 +46,8 @@ router.post(
 
 router.get(
   '/projects/:id/status',
-  validate({ params: { id: Joi.string().required() } }),
-  asyncHandler(async (req, res) => {
+  validate({ params: Joi.object({ id: Joi.string().required() }) }),
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const status = await AnalysisStatusModel.findByProjectId(id);
@@ -68,8 +68,8 @@ router.get(
 
 router.get(
   '/projects/:id/results',
-  validate({ params: { id: Joi.string().required() } }),
-  asyncHandler(async (req, res) => {
+  validate({ params: Joi.object({ id: Joi.string().required() }) }),
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const result = await AnalysisResultModel.findLatestByProjectId(id);
@@ -84,8 +84,8 @@ router.get(
 
 router.get(
   '/jobs/:jobId/status',
-  validate({ params: { jobId: Joi.string().required() } }),
-  asyncHandler(async (req, res) => {
+  validate({ params: Joi.object({ jobId: Joi.string().required() }) }),
+  asyncHandler(async (req: Request, res: Response) => {
     const { jobId } = req.params;
 
     const jobStatus = getJobStatus(jobId);
@@ -98,8 +98,8 @@ router.get(
 
 router.get(
   '/projects/:id/graph',
-  validate({ params: { id: Joi.string().required() } }),
-  asyncHandler(async (req, res) => {
+  validate({ params: Joi.object({ id: Joi.string().required() }) }),
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const result = await AnalysisResultModel.findLatestByProjectId(id);
@@ -114,8 +114,8 @@ router.get(
 
 router.get(
   '/projects/:id/apis',
-  validate({ params: { id: Joi.string().required() } }),
-  asyncHandler(async (req, res) => {
+  validate({ params: Joi.object({ id: Joi.string().required() }) }),
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const result = await AnalysisResultModel.findLatestByProjectId(id);
@@ -133,8 +133,8 @@ router.get(
 
 router.get(
   '/projects/:id/tech',
-  validate({ params: { id: Joi.string().required() } }),
-  asyncHandler(async (req, res) => {
+  validate({ params: Joi.object({ id: Joi.string().required() }) }),
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const result = await AnalysisResultModel.findLatestByProjectId(id);

@@ -57,14 +57,6 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
     }
   };
 
-  const getRepositoryDomain = (url: string) => {
-    try {
-      const urlObj = new URL(url);
-      return urlObj.hostname;
-    } catch {
-      return 'Unknown';
-    }
-  };
 
   const formatRepositoryUrl = (url: string) => {
     return url.replace(/^https?:\/\//, '').replace(/\.git$/, '');

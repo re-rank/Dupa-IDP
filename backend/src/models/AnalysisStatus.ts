@@ -82,6 +82,7 @@ export class AnalysisStatusModel {
     currentStep: string;
     error: string;
     completedAt: Date;
+    startedAt?: Date;
   }>): Promise<AnalysisStatusType | null> {
     const db = getDatabase();
 
@@ -114,6 +115,11 @@ export class AnalysisStatusModel {
         values.push(data.completedAt.toISOString());
       }
 
+      if (data.startedAt !== undefined) {
+        updates.push('started_at = ?');
+        values.push(data.startedAt.toISOString());
+      }
+
       if (updates.length === 0) {
         return await this.findById(id);
       }
@@ -142,6 +148,7 @@ export class AnalysisStatusModel {
     currentStep: string;
     error: string;
     completedAt: Date;
+    startedAt?: Date;
   }>): Promise<AnalysisStatusType | null> {
     const db = getDatabase();
 

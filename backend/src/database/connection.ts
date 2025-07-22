@@ -92,10 +92,13 @@ const runMigrations = async () => {
   `);
 
   // Get list of applied migrations
-  const appliedMigrations = await db.all<{ name: string }>(
+  interface MigrationRecord {
+    name: string;
+  }
+  const appliedMigrations = await db.all<MigrationRecord[]>(
     'SELECT name FROM migrations ORDER BY id'
   );
-  const applied = new Set(appliedMigrations.map(m => m.name));
+  const applied = new Set(appliedMigrations.map((m: MigrationRecord) => m.name));
 
   // Read migration files
   const migrationsDir = path.join(__dirname, 'migrations');

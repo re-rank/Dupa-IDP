@@ -3,10 +3,10 @@ import { ProjectModel } from '../../models/Project';
 import { AnalysisStatusModel } from '../../models/AnalysisStatus';
 import { AnalysisResultModel } from '../../models/AnalysisResult';
 import { gitService } from '../git/gitService';
-import { repositoryAnalyzer } from './repositoryAnalyzer';
+import { repositoryAnalyzer, RepositoryAnalyzer } from './repositoryAnalyzer';
 import { FrameworkDetector } from './frameworkDetector';
 import { DependencyExtractor } from './dependencyExtractor';
-import { AnalysisOptions, AnalysisData, AnalysisJob } from '../../types';
+import { AnalysisOptions, AnalysisData, AnalysisJob, RepositoryStructure, DependencyNode, DependencyEdge } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs/promises';
@@ -109,7 +109,25 @@ export class AnalysisService {
         });
 
         // Step 3: Analyze repository structure
-        const structure = await repositoryAnalyzer.analyzeRepository(project, repoPath);
+        const rawStructure = await repositoryAnalyzer.analyzeRepository(project, repoPath);
+        
+        // Convert to match RepositoryStructure type from types/index.ts
+        const importantFiles = RepositoryAnalyzer.findImportantFiles(rawStructure.files);
+        const structure: RepositoryStructure = {
+          rootPath: rawStructure.rootPath,
+          totalFiles: rawStructure.stats.totalFiles,
+          totalSize: rawStructure.stats.totalSize,
+          languageDistribution: rawStructure.stats.languageDistribution,
+          fileTypeDistribution: rawStructure.stats.fileTypeDistribution,
+          directories: rawStructure.directories,
+          importantFiles: {
+            entry: importantFiles.entry || [],
+            configuration: importantFiles.configuration || [],
+            documentation: importantFiles.documentation || [],
+            tests: importantFiles.tests || [],
+            build: importantFiles.build || []
+          }
+        };
 
         job.progress = 50;
         await AnalysisStatusModel.updateByProjectId(projectId, {
@@ -118,7 +136,7 @@ export class AnalysisService {
         });
 
         // Step 4: Detect frameworks
-        const frameworks = await FrameworkDetector.detectFrameworks(repoPath, structure.files);
+        const frameworks = await FrameworkDetector.detectFrameworks(repoPath, rawStructure.files);
 
         job.progress = 60;
         await AnalysisStatusModel.updateByProjectId(projectId, {
@@ -128,10 +146,10 @@ export class AnalysisService {
 
         // Step 5: Extract dependencies
         const [dependencies, apiCalls, databaseConnections, environmentVariables] = await Promise.all([
-          DependencyExtractor.extractDependencies(repoPath, structure.files),
-          DependencyExtractor.extractAPICalls(repoPath, structure.files),
-          DependencyExtractor.extractDatabaseConnections(repoPath, structure.files),
-          DependencyExtractor.extractEnvironmentVariables(repoPath, structure.files)
+          DependencyExtractor.extractDependencies(repoPath, rawStructure.files),
+          DependencyExtractor.extractAPICalls(repoPath, rawStructure.files),
+          DependencyExtractor.extractDatabaseConnections(repoPath, rawStructure.files),
+          DependencyExtractor.extractEnvironmentVariables(repoPath, rawStructure.files)
         ]);
 
         job.progress = 80;
@@ -156,7 +174,7 @@ export class AnalysisService {
         });
 
         // Step 7: Calculate metrics and create summary
-        const projectStack = await FrameworkDetector.detectProjectStack(repoPath, structure.files, frameworks);
+        const projectStack = await FrameworkDetector.detectProjectStack(repoPath, rawStructure.files, frameworks);
         
         const metrics = this.calculateMetrics({
           structure,
@@ -247,15 +265,15 @@ export class AnalysisService {
     databaseConnections: any[];
     environmentVariables: any[];
   }) {
-    const nodes = [];
-    const edges = [];
+    const nodes: DependencyNode[] = [];
+    const edges: DependencyEdge[] = [];
 
     // Add framework nodes
     for (const framework of data.frameworks) {
       nodes.push({
         id: `framework_${framework.name.toLowerCase().replace(/\s+/g, '_')}`,
         label: framework.name,
-        type: 'service',
+        type: 'service' as const,
         technology: framework.name,
         metadata: {
           type: framework.type,
@@ -273,7 +291,7 @@ export class AnalysisService {
         nodes.push({
           id: `database_${conn.database.toLowerCase().replace(/\s+/g, '_')}`,
           label: conn.database,
-          type: 'database',
+          type: 'database' as const,
           technology: conn.database,
           metadata: {
             type: conn.type,
@@ -295,7 +313,7 @@ export class AnalysisService {
             nodes.push({
               id: `external_${domain.replace(/\./g, '_')}`,
               label: domain,
-              type: 'external',
+              type: 'external' as const,
               metadata: {
                 endpoint: api.endpoint,
                 method: api.method
@@ -312,14 +330,14 @@ export class AnalysisService {
   }
 
   private static calculateMetrics(data: {
-    structure: any;
+    structure: RepositoryStructure;
     frameworks: any[];
     dependencies: any[];
     apiCalls: any[];
     databaseConnections: any[];
   }) {
-    const totalFiles = data.structure.stats.totalFiles;
-    const totalLines = Object.values(data.structure.stats.languageDistribution).reduce((a: number, b: number) => a + b, 0);
+    const totalFiles = data.structure.totalFiles;
+    const totalLines = Object.values(data.structure.languageDistribution || {}).reduce((a: number, b: any) => Number(a) + Number(b), 0);
     
     // Simple complexity calculation based on various factors
     let complexityScore = 0;

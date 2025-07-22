@@ -112,3 +112,32 @@ export const cacheDel = async (key: string): Promise<boolean> => {
     return false;
   }
 };
+
+// Check if Redis is connected
+export const isRedisConnected = (): boolean => {
+  return redisClient?.isReady || false;
+};
+
+// CacheService for health checks
+export const CacheService = {
+  healthCheck: async () => {
+    const startTime = Date.now();
+    let connected = false;
+    let error: string | undefined;
+    
+    try {
+      if (redisClient) {
+        await redisClient.ping();
+        connected = true;
+      }
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Unknown error';
+    }
+    
+    return {
+      connected,
+      latency: Date.now() - startTime,
+      error
+    };
+  }
+};

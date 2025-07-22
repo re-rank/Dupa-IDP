@@ -40,6 +40,7 @@ export interface AnalysisData {
   environmentVariables: EnvironmentVariable[];
   dependencyGraph: DependencyGraph;
   metrics: AnalysisMetrics;
+  projectStack?: any;
 }
 
 // Repository Structure Types

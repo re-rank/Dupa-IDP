@@ -34,6 +34,8 @@ module.exports = {
   testTimeout: 10000,
   verbose: true,
   forceExit: true,
+  detectOpenHandles: false,
+  maxWorkers: 1,
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true

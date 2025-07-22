@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from '@jest/globals';
 import { DependencyGraphBuilder } from './dependencyGraphBuilder';
 import { FileInfo } from '../git/gitService';
 import { APICall, DatabaseConnection, Dependency } from './dependencyExtractor';
@@ -12,7 +12,8 @@ describe('DependencyGraphBuilder', () => {
       size: 1024,
       extension: '.js',
       isDirectory: false,
-      relativePath: 'src/services/userService.js'
+      relativePath: 'src/services/userService.js',
+      lastModified: new Date('2023-01-01')
     },
     {
       path: '/test/src/controllers/userController.js',
@@ -20,7 +21,8 @@ describe('DependencyGraphBuilder', () => {
       size: 2048,
       extension: '.js',
       isDirectory: false,
-      relativePath: 'src/controllers/userController.js'
+      relativePath: 'src/controllers/userController.js',
+      lastModified: new Date('2023-01-01')
     },
     {
       path: '/test/src/services',
@@ -28,7 +30,8 @@ describe('DependencyGraphBuilder', () => {
       size: 0,
       extension: '',
       isDirectory: true,
-      relativePath: 'src/services'
+      relativePath: 'src/services',
+      lastModified: new Date('2023-01-01')
     }
   ];
 
