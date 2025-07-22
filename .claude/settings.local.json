@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(npm install)",
+      "Bash(PORT=3001 npm run dev)",
+      "Bash(npm install:*)",
+      "Bash(pkill:*)",
+      "Bash(true)",
+      "Bash(PORT=3002 npm run dev)",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  }
+}
