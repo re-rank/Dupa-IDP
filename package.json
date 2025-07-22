@@ -2,9 +2,17 @@
   "name": "project-atlas",
   "version": "0.1.0",
   "description": "Automated code structure analysis and visualization tool",
-  "main": "index.js",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/project-atlas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/project-atlas/issues"
+  },
+  "homepage": "https://github.com/your-org/project-atlas#readme",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "build": "npm run build:backend && npm run build:frontend",
@@ -13,7 +21,17 @@
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "cd backend && npm test",
     "test:frontend": "cd frontend && npm test",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+    "test:watch": "concurrently -n \"backend,frontend\" \"npm run test:backend -- --watch\" \"npm run test:frontend -- --watch\"",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:fix": "npm run lint:backend -- --fix && npm run lint:frontend -- --fix",
+    "clean": "npm run clean:backend && npm run clean:frontend",
+    "clean:backend": "cd backend && rm -rf dist node_modules",
+    "clean:frontend": "cd frontend && rm -rf dist node_modules",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "postinstall": "husky install",
+    "prepare": "husky install"
   },
   "keywords": [
     "code-analysis",
@@ -24,8 +42,24 @@
   ],
   "author": "Project Atlas Team",
   "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0"
+  },
+  "lint-staged": {
+    "backend/src/**/*.{ts,tsx}": [
+      "cd backend && npm run lint:fix",
+      "cd backend && npm test -- --findRelatedTests"
+    ],
+    "frontend/src/**/*.{ts,tsx,js,jsx}": [
+      "cd frontend && npm run lint:fix",
+      "cd frontend && npm test -- --findRelatedTests"
+    ]
   },
   "workspaces": [
     "backend",

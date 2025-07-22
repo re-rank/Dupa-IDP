@@ -1,310 +1,400 @@
+import { logger } from '../../utils/logger';
+import { ProjectModel } from '../../models/Project';
+import { AnalysisStatusModel } from '../../models/AnalysisStatus';
+import { AnalysisResultModel } from '../../models/AnalysisResult';
 import { gitService } from '../git/gitService';
 import { repositoryAnalyzer } from './repositoryAnalyzer';
 import { FrameworkDetector } from './frameworkDetector';
 import { DependencyExtractor } from './dependencyExtractor';
-import { DependencyGraphBuilder } from './dependencyGraphBuilder';
-import { ProjectModel } from '../../models/Project';
-import { AnalysisStatusModel } from '../../models/AnalysisStatus';
-import { AnalysisResultModel } from '../../models/AnalysisResult';
-import { logger } from '../../utils/logger';
+import { AnalysisOptions, AnalysisData, AnalysisJob } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
+import fs from 'fs/promises';
 
-interface AnalysisOptions {
-  branch?: string;
-  depth?: number;
-  force?: boolean;
-}
-
-interface AnalysisJob {
-  id: string;
-  projectId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  progress: number;
-  error?: string;
-}
-
-// In-memory job tracking for development (when Redis is not available)
+// In-memory job tracking (in production, use Redis or database)
 const activeJobs = new Map<string, AnalysisJob>();
 
-export async function performAnalysis(
-  projectId: string,
-  options: AnalysisOptions = {}
-): Promise<AnalysisJob> {
-  const jobId = `job_${uuidv4()}`;
-  const job: AnalysisJob = {
-    id: jobId,
-    projectId,
-    status: 'pending',
-    progress: 0
-  };
-
-  activeJobs.set(jobId, job);
-
-  // Run analysis asynchronously
-  runAnalysis(projectId, jobId, options).catch(error => {
-    logger.error(`Analysis failed for project ${projectId}:`, error);
-    const job = activeJobs.get(jobId);
-    if (job) {
-      job.status = 'failed';
-      job.error = error.message;
-    }
-  });
-
-  return job;
-}
-
-async function runAnalysis(
-  projectId: string,
-  jobId: string,
-  options: AnalysisOptions
-): Promise<void> {
-  const job = activeJobs.get(jobId);
-  if (!job) return;
-
-  job.status = 'running';
+export class AnalysisService {
   
-  try {
-    // Get project details
-    const project = await ProjectModel.findById(projectId);
-    if (!project) {
-      throw new Error(`Project not found: ${projectId}`);
-    }
-
-    // Create or update analysis status
-    let status = await AnalysisStatusModel.findByProjectId(projectId);
-    if (!status) {
-      status = await AnalysisStatusModel.create({
-        projectId,
-        status: 'cloning',
-        progress: 0
-      });
-    } else {
-      await AnalysisStatusModel.update(status.id, {
-        status: 'cloning',
-        progress: 0,
-        error: null,
-        startedAt: new Date()
-      });
-    }
-
-    job.progress = 10;
-
-    // Clone repository
-    logger.info(`Cloning repository: ${project.repositoryUrl}`);
-    const repoPath = await gitService.cloneRepository(
-      project.repositoryUrl,
+  static async performAnalysis(
+    projectId: string, 
+    options: AnalysisOptions = {}
+  ): Promise<AnalysisJob> {
+    const jobId = `job_${uuidv4()}`;
+    
+    const job: AnalysisJob = {
+      id: jobId,
       projectId,
-      {
-        branch: options.branch,
-        depth: options.depth || 10,
-        single: true
-      }
-    );
-
-    await AnalysisStatusModel.update(status.id, {
-      status: 'scanning',
-      progress: 20
-    });
-    job.progress = 20;
-
-    // Scan repository structure
-    logger.info(`Scanning repository structure for project: ${projectId}`);
-    const structure = await repositoryAnalyzer.analyzeRepository(project as any, repoPath);
-
-    await AnalysisStatusModel.update(status.id, {
-      status: 'analyzing',
-      progress: 40,
-      currentStep: 'Detecting frameworks and languages'
-    });
-    job.progress = 40;
-
-    // Detect project type and frameworks
-    const projectType = await repositoryAnalyzer.detectProjectType(structure.files);
-    const importantFiles = repositoryAnalyzer.findImportantFiles(structure.files);
-    const frameworks = await FrameworkDetector.detectFrameworks(repoPath, structure.files);
-    const projectStack = await FrameworkDetector.detectProjectStack(repoPath, structure.files, frameworks);
-
-    await AnalysisStatusModel.update(status.id, {
-      progress: 60,
-      currentStep: 'Extracting dependencies and API calls'
-    });
-    job.progress = 60;
-
-    // Extract dependencies and API calls
-    const [apiCalls, databaseConnections, dependencies, environmentVariables] = await Promise.all([
-      DependencyExtractor.extractAPICalls(repoPath, structure.files),
-      DependencyExtractor.extractDatabaseConnections(repoPath, structure.files),
-      DependencyExtractor.extractDependencies(repoPath, structure.files),
-      DependencyExtractor.extractEnvironmentVariables(repoPath, structure.files)
-    ]);
-
-    await AnalysisStatusModel.update(status.id, {
-      status: 'generating',
-      progress: 80,
-      currentStep: 'Generating dependency graph'
-    });
-    job.progress = 80;
-
-    // Build dependency graph
-    const graphBuilder = new DependencyGraphBuilder();
-    const dependencyGraph = graphBuilder.buildGraph(
-      structure.files,
-      apiCalls,
-      databaseConnections,
-      dependencies,
-      frameworks
-    );
-
-    await AnalysisStatusModel.update(status.id, {
-      progress: 90,
-      currentStep: 'Finalizing analysis report'
-    });
-    job.progress = 90;
-
-    // Prepare analysis data
-    const analysisData = {
-      structure: {
-        totalFiles: structure.stats.totalFiles,
-        totalSize: structure.stats.totalSize,
-        directories: structure.directories.slice(0, 100),
-        languageDistribution: structure.stats.languageDistribution,
-        fileTypeDistribution: structure.stats.fileTypeDistribution
-      },
-      projectType,
-      importantFiles,
-      configurationFiles: structure.stats.configurationFiles.slice(0, 50),
-      documentationFiles: structure.stats.documentationFiles.slice(0, 50),
-      largestFiles: structure.stats.largestFiles,
-      frameworks,
-      projectStack,
-      apiCalls: apiCalls.slice(0, 200), // Limit to prevent huge data
-      databaseConnections,
-      dependencies: dependencies.slice(0, 500),
-      environmentVariables: environmentVariables.filter(v => v.possibleType !== 'secret'),
-      dependencyGraph,
-      metrics: {
-        totalAPICalls: apiCalls.length,
-        totalDependencies: dependencies.length,
-        totalDatabaseConnections: databaseConnections.length,
-        totalFrameworks: frameworks.length,
-        complexity: calculateComplexity(structure, frameworks, apiCalls, dependencies)
-      },
-      analyzedAt: new Date()
+      type: 'full_analysis',
+      status: 'pending',
+      progress: 0,
+      data: options,
+      createdAt: new Date()
     };
 
-    // Save analysis results
-    await AnalysisResultModel.create({
-      projectId,
-      data: analysisData
+    activeJobs.set(jobId, job);
+    
+    // Start analysis in background
+    this.runAnalysis(job).catch(error => {
+      logger.error(`Analysis job ${jobId} failed:`, error);
+      job.status = 'failed';
+      job.error = error.message;
+      job.completedAt = new Date();
     });
 
-    // Update project status
-    await ProjectModel.update(projectId, {
-      status: 'completed',
-      lastAnalyzedAt: new Date()
-    });
+    return job;
+  }
 
-    // Update analysis status
-    await AnalysisStatusModel.update(status.id, {
-      status: 'completed',
-      progress: 100,
+  static getJobStatus(jobId: string): AnalysisJob | null {
+    return activeJobs.get(jobId) || null;
+  }
+
+  static async getActiveJobs(): Promise<AnalysisJob[]> {
+    return Array.from(activeJobs.values()).filter(job => 
+      job.status === 'pending' || job.status === 'active'
+    );
+  }
+
+  private static async runAnalysis(job: AnalysisJob): Promise<void> {
+    const { projectId, data: options } = job;
+    
+    try {
+      // Update job status
+      job.status = 'active';
+      job.startedAt = new Date();
+      job.progress = 0;
+
+      // Create or update analysis status
+      await AnalysisStatusModel.updateByProjectId(projectId, {
+        status: 'in_progress',
+        progress: 0,
+        currentStep: 'Initializing analysis'
+      });
+
+      // Update project status
+      await ProjectModel.update(projectId, { status: 'analyzing' });
+
+      logger.info(`Starting analysis for project: ${projectId}`);
+
+      // Step 1: Get project details
+      const project = await ProjectModel.findById(projectId);
+      if (!project) {
+        throw new Error('Project not found');
+      }
+
+      job.progress = 10;
+      await AnalysisStatusModel.updateByProjectId(projectId, {
+        progress: 10,
+        currentStep: 'Cloning repository'
+      });
+
+      // Step 2: Clone repository
+      const tempDir = path.join(process.cwd(), 'temp', `analysis_${projectId}_${Date.now()}`);
+      await fs.mkdir(tempDir, { recursive: true });
+
+      try {
+        const repoPath = await gitService.cloneRepository(
+          project.repositoryUrl,
+          tempDir,
+          {
+            branch: options.branch || project.branch || 'main',
+            depth: options.depth || 1
+          }
+        );
+
+        job.progress = 30;
+        await AnalysisStatusModel.updateByProjectId(projectId, {
+          progress: 30,
+          currentStep: 'Scanning repository structure'
+        });
+
+        // Step 3: Analyze repository structure
+        const structure = await repositoryAnalyzer.analyzeRepository(project, repoPath);
+
+        job.progress = 50;
+        await AnalysisStatusModel.updateByProjectId(projectId, {
+          progress: 50,
+          currentStep: 'Detecting frameworks and technologies'
+        });
+
+        // Step 4: Detect frameworks
+        const frameworks = await FrameworkDetector.detectFrameworks(repoPath, structure.files);
+
+        job.progress = 60;
+        await AnalysisStatusModel.updateByProjectId(projectId, {
+          progress: 60,
+          currentStep: 'Analyzing dependencies'
+        });
+
+        // Step 5: Extract dependencies
+        const [dependencies, apiCalls, databaseConnections, environmentVariables] = await Promise.all([
+          DependencyExtractor.extractDependencies(repoPath, structure.files),
+          DependencyExtractor.extractAPICalls(repoPath, structure.files),
+          DependencyExtractor.extractDatabaseConnections(repoPath, structure.files),
+          DependencyExtractor.extractEnvironmentVariables(repoPath, structure.files)
+        ]);
+
+        job.progress = 80;
+        await AnalysisStatusModel.updateByProjectId(projectId, {
+          progress: 80,
+          currentStep: 'Building dependency graph'
+        });
+
+        // Step 6: Build dependency graph
+        const dependencyGraph = await this.buildDependencyGraph({
+          frameworks,
+          dependencies,
+          apiCalls,
+          databaseConnections,
+          environmentVariables
+        });
+
+        job.progress = 90;
+        await AnalysisStatusModel.updateByProjectId(projectId, {
+          progress: 90,
+          currentStep: 'Calculating metrics'
+        });
+
+        // Step 7: Calculate metrics and create summary
+        const projectStack = await FrameworkDetector.detectProjectStack(repoPath, structure.files, frameworks);
+        
+        const metrics = this.calculateMetrics({
+          structure,
+          frameworks,
+          dependencies,
+          apiCalls,
+          databaseConnections
+        });
+
+        const summary = {
+          projectType: projectStack.stack,
+          primaryLanguage: projectStack.primaryLanguage,
+          stack: projectStack.stack,
+          confidence: frameworks.length > 0 ? Math.max(...frameworks.map(f => f.confidence)) : 0.5,
+          description: `${projectStack.primaryLanguage} ${projectStack.stack} project with ${frameworks.length} detected frameworks`
+        };
+
+        // Step 8: Create analysis result
+        const analysisData: AnalysisData = {
+          summary,
+          structure,
+          frameworks,
+          dependencies,
+          apiCalls,
+          databaseConnections,
+          environmentVariables,
+          dependencyGraph,
+          metrics
+        };
+
+        await AnalysisResultModel.create({
+          projectId,
+          analysisData
+        });
+
+        job.progress = 100;
+        job.status = 'completed';
+        job.result = analysisData;
+        job.completedAt = new Date();
+
+        // Update final status
+        await AnalysisStatusModel.updateByProjectId(projectId, {
+          status: 'completed',
+          progress: 100,
+          currentStep: 'Analysis completed',
+          completedAt: new Date()
+        });
+
+        await ProjectModel.update(projectId, { 
+          status: 'completed',
+          lastAnalyzedAt: new Date()
+        });
+
+        logger.info(`Analysis completed for project: ${projectId}`);
+
+      } finally {
+        // Cleanup temporary directory
+        try {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        } catch (cleanupError) {
+          logger.warn(`Failed to cleanup temp directory ${tempDir}:`, cleanupError);
+        }
+      }
+
+    } catch (error) {
+      logger.error(`Analysis failed for project ${projectId}:`, error);
+      
+      job.status = 'failed';
+      job.error = error instanceof Error ? error.message : 'Unknown error';
+      job.completedAt = new Date();
+
+      await AnalysisStatusModel.updateByProjectId(projectId, {
+        status: 'failed',
+        error: job.error,
+        completedAt: new Date()
+      });
+
+      await ProjectModel.update(projectId, { status: 'failed' });
+      
+      throw error;
+    }
+  }
+
+  private static async buildDependencyGraph(data: {
+    frameworks: any[];
+    dependencies: any[];
+    apiCalls: any[];
+    databaseConnections: any[];
+    environmentVariables: any[];
+  }) {
+    const nodes = [];
+    const edges = [];
+
+    // Add framework nodes
+    for (const framework of data.frameworks) {
+      nodes.push({
+        id: `framework_${framework.name.toLowerCase().replace(/\s+/g, '_')}`,
+        label: framework.name,
+        type: 'service',
+        technology: framework.name,
+        metadata: {
+          type: framework.type,
+          confidence: framework.confidence,
+          version: framework.version
+        }
+      });
+    }
+
+    // Add database nodes from connections
+    const databases = new Set();
+    for (const conn of data.databaseConnections) {
+      if (!databases.has(conn.database)) {
+        databases.add(conn.database);
+        nodes.push({
+          id: `database_${conn.database.toLowerCase().replace(/\s+/g, '_')}`,
+          label: conn.database,
+          type: 'database',
+          technology: conn.database,
+          metadata: {
+            type: conn.type,
+            confidence: conn.confidence
+          }
+        });
+      }
+    }
+
+    // Add external API nodes
+    const externalAPIs = new Set();
+    for (const api of data.apiCalls) {
+      if (api.endpoint && api.endpoint.startsWith('http')) {
+        try {
+          const url = new URL(api.endpoint);
+          const domain = url.hostname;
+          if (!externalAPIs.has(domain)) {
+            externalAPIs.add(domain);
+            nodes.push({
+              id: `external_${domain.replace(/\./g, '_')}`,
+              label: domain,
+              type: 'external',
+              metadata: {
+                endpoint: api.endpoint,
+                method: api.method
+              }
+            });
+          }
+        } catch (urlError) {
+          // Skip invalid URLs
+        }
+      }
+    }
+
+    return { nodes, edges };
+  }
+
+  private static calculateMetrics(data: {
+    structure: any;
+    frameworks: any[];
+    dependencies: any[];
+    apiCalls: any[];
+    databaseConnections: any[];
+  }) {
+    const totalFiles = data.structure.stats.totalFiles;
+    const totalLines = Object.values(data.structure.stats.languageDistribution).reduce((a: number, b: number) => a + b, 0);
+    
+    // Simple complexity calculation based on various factors
+    let complexityScore = 0;
+    complexityScore += Math.min(data.frameworks.length * 10, 50); // Framework complexity
+    complexityScore += Math.min(data.dependencies.length * 2, 100); // Dependency complexity
+    complexityScore += Math.min(data.apiCalls.length * 5, 100); // API complexity
+    complexityScore += Math.min(data.databaseConnections.length * 15, 75); // Database complexity
+    
+    // Normalize to 0-100 scale
+    complexityScore = Math.min(complexityScore, 100);
+
+    // Simple maintainability index (inverse of complexity with some adjustments)
+    const maintainabilityIndex = Math.max(100 - complexityScore - (totalFiles > 1000 ? 20 : 0), 0);
+
+    // Technical debt ratio (simplified calculation)
+    const technicalDebtRatio = Math.min(
+      (data.dependencies.filter(d => d.type === 'development').length / Math.max(data.dependencies.length, 1)) * 100 +
+      (data.apiCalls.filter(a => a.confidence < 0.7).length / Math.max(data.apiCalls.length, 1)) * 50,
+      100
+    );
+
+    return {
+      totalFiles,
+      totalLines,
+      totalAPICalls: data.apiCalls.length,
+      totalDatabaseConnections: data.databaseConnections.length,
+      totalDependencies: data.dependencies.length,
+      totalFrameworks: data.frameworks.length,
+      complexityScore,
+      maintainabilityIndex,
+      technicalDebtRatio
+    };
+  }
+
+  static async cancelAnalysis(jobId: string): Promise<boolean> {
+    const job = activeJobs.get(jobId);
+    if (!job || job.status === 'completed' || job.status === 'failed') {
+      return false;
+    }
+
+    job.status = 'failed';
+    job.error = 'Analysis cancelled by user';
+    job.completedAt = new Date();
+
+    await AnalysisStatusModel.updateByProjectId(job.projectId, {
+      status: 'failed',
+      error: 'Analysis cancelled',
       completedAt: new Date()
     });
 
-    job.progress = 100;
-    job.status = 'completed';
+    await ProjectModel.update(job.projectId, { status: 'failed' });
 
-    // Cleanup repository
-    await gitService.cleanupRepository(projectId);
+    logger.info(`Analysis cancelled for job: ${jobId}`);
+    return true;
+  }
 
-    logger.info(`Analysis completed for project: ${projectId}`);
+  static async cleanupOldJobs(hoursOld: number = 24): Promise<number> {
+    const cutoffTime = new Date(Date.now() - hoursOld * 60 * 60 * 1000);
+    let cleanedCount = 0;
 
-  } catch (error) {
-    logger.error(`Analysis failed for project ${projectId}:`, error);
-    
-    // Update status to failed
-    const status = await AnalysisStatusModel.findByProjectId(projectId);
-    if (status) {
-      await AnalysisStatusModel.update(status.id, {
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        completedAt: new Date()
-      });
+    for (const [jobId, job] of activeJobs.entries()) {
+      if (job.completedAt && job.completedAt < cutoffTime) {
+        activeJobs.delete(jobId);
+        cleanedCount++;
+      }
     }
 
-    // Update project status
-    await ProjectModel.update(projectId, {
-      status: 'failed'
-    });
-
-    job.status = 'failed';
-    job.error = error instanceof Error ? error.message : 'Unknown error';
-
-    // Cleanup on failure
-    try {
-      await gitService.cleanupRepository(projectId);
-    } catch (cleanupError) {
-      logger.error(`Failed to cleanup repository for project ${projectId}:`, cleanupError);
+    if (cleanedCount > 0) {
+      logger.info(`Cleaned up ${cleanedCount} old analysis jobs`);
     }
 
-    throw error;
+    return cleanedCount;
   }
 }
 
-// Helper function to calculate project complexity
-function calculateComplexity(
-  structure: any,
-  frameworks: any[],
-  apiCalls: any[],
-  dependencies: any[]
-): 'low' | 'medium' | 'high' | 'very_high' {
-  let score = 0;
-
-  // File count factor
-  if (structure.stats.totalFiles > 1000) score += 3;
-  else if (structure.stats.totalFiles > 500) score += 2;
-  else if (structure.stats.totalFiles > 100) score += 1;
-
-  // Framework count factor
-  if (frameworks.length > 5) score += 3;
-  else if (frameworks.length > 3) score += 2;
-  else if (frameworks.length > 1) score += 1;
-
-  // API calls factor
-  if (apiCalls.length > 100) score += 3;
-  else if (apiCalls.length > 50) score += 2;
-  else if (apiCalls.length > 20) score += 1;
-
-  // Dependencies factor
-  if (dependencies.length > 100) score += 3;
-  else if (dependencies.length > 50) score += 2;
-  else if (dependencies.length > 20) score += 1;
-
-  // Language diversity factor
-  const languages = Object.keys(structure.stats.languageDistribution || {});
-  if (languages.length > 5) score += 2;
-  else if (languages.length > 3) score += 1;
-
-  if (score >= 10) return 'very_high';
-  if (score >= 7) return 'high';
-  if (score >= 4) return 'medium';
-  return 'low';
-}
-
-export function getJobStatus(jobId: string): AnalysisJob | null {
-  return activeJobs.get(jobId) || null;
-}
-
-export function getActiveJobs(): AnalysisJob[] {
-  return Array.from(activeJobs.values());
-}
-
-// Clean up completed jobs after 1 hour
-setInterval(() => {
-  const oneHourAgo = Date.now() - 60 * 60 * 1000;
-  for (const [jobId, job] of activeJobs.entries()) {
-    if (job.status === 'completed' || job.status === 'failed') {
-      activeJobs.delete(jobId);
-    }
-  }
-}, 60 * 60 * 1000);
+// Legacy exports for backward compatibility
+export const performAnalysis = AnalysisService.performAnalysis.bind(AnalysisService);
+export const getJobStatus = AnalysisService.getJobStatus.bind(AnalysisService);

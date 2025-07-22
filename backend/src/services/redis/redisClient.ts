@@ -1,61 +1,114 @@
-import { createClient } from 'redis';
+import { createClient, RedisClientType } from 'redis';
 import { logger } from '../../utils/logger';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const REDIS_ENABLED = process.env.REDIS_ENABLED !== 'false';
+let redisClient: RedisClientType | null = null;
 
-export const redisClient = createClient({
-  url: REDIS_URL,
-  socket: {
-    reconnectStrategy: (retries) => {
-      if (retries > 3) {
-        logger.error('Redis connection failed after 3 retries');
-        return new Error('Redis connection failed');
+export const initializeRedis = async (): Promise<RedisClientType | null> => {
+  if (process.env.REDIS_ENABLED !== 'true') {
+    logger.info('Redis is disabled, skipping initialization');
+    return null;
+  }
+
+  try {
+    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+    
+    redisClient = createClient({
+      url: redisUrl,
+      password: process.env.REDIS_PASSWORD || undefined,
+      database: parseInt(process.env.REDIS_DB || '0'),
+      socket: {
+        reconnectStrategy: (retries) => {
+          if (retries > 10) {
+            logger.error('Redis reconnection failed after 10 attempts');
+            return new Error('Redis reconnection failed');
+          }
+          return Math.min(retries * 50, 1000);
+        }
       }
-      const delay = Math.min(retries * 50, 150);
-      logger.info(`Retrying Redis connection in ${delay}ms...`);
-      return delay;
-    }
+    });
+
+    redisClient.on('error', (error) => {
+      logger.error('Redis client error:', error);
+    });
+
+    redisClient.on('connect', () => {
+      logger.info('Redis client connected');
+    });
+
+    redisClient.on('ready', () => {
+      logger.info('Redis client ready');
+    });
+
+    redisClient.on('end', () => {
+      logger.info('Redis client disconnected');
+    });
+
+    await redisClient.connect();
+    
+    // Test connection
+    await redisClient.ping();
+    
+    logger.info('Redis initialized successfully');
+    return redisClient;
+  } catch (error) {
+    logger.error('Failed to initialize Redis:', error);
+    redisClient = null;
+    return null;
   }
-});
+};
 
-redisClient.on('error', (err) => {
-  logger.error('Redis Client Error:', err);
-});
+export const getRedisClient = (): RedisClientType | null => {
+  return redisClient;
+};
 
-redisClient.on('connect', () => {
-  logger.info('Redis Client Connected');
-});
-
-redisClient.on('ready', () => {
-  logger.info('Redis Client Ready');
-});
-
-export async function initializeRedis(): Promise<void> {
-  if (!REDIS_ENABLED) {
-    logger.info('Redis is disabled - running without cache and queue features');
-    return;
+export const closeRedis = async (): Promise<void> => {
+  if (redisClient) {
+    await redisClient.quit();
+    redisClient = null;
+    logger.info('Redis connection closed');
   }
+};
+
+// Cache utility functions
+export const cacheGet = async (key: string): Promise<string | null> => {
+  if (!redisClient) return null;
   
   try {
-    await redisClient.connect();
-    logger.info('Redis connection established');
+    return await redisClient.get(key);
   } catch (error) {
-    logger.error('Failed to connect to Redis:', error);
-    // Don't throw - allow app to run without Redis for development
-    logger.warn('Running without Redis - analysis queue will not be available');
+    logger.error('Redis GET error:', error);
+    return null;
   }
-}
+};
 
-export async function closeRedis(): Promise<void> {
+export const cacheSet = async (
+  key: string, 
+  value: string, 
+  ttl?: number
+): Promise<boolean> => {
+  if (!redisClient) return false;
+  
   try {
-    await redisClient.quit();
-    logger.info('Redis connection closed');
+    if (ttl) {
+      await redisClient.setEx(key, ttl, value);
+    } else {
+      await redisClient.set(key, value);
+    }
+    return true;
   } catch (error) {
-    logger.error('Error closing Redis connection:', error);
+    logger.error('Redis SET error:', error);
+    return false;
   }
-}
+};
 
-export function isRedisConnected(): boolean {
-  return redisClient.isReady;
-}
+export const cacheDel = async (key: string): Promise<boolean> => {
+  if (!redisClient) return false;
+  
+  try {
+    await redisClient.del(key);
+    return true;
+  } catch (error) {
+    logger.error('Redis DEL error:', error);
+    return false;
+  }
+};

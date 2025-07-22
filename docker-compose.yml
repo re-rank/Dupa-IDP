@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # Backend API Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: project-atlas-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - BACKEND_PORT=3001
+      - DATABASE_PATH=/app/data/atlas.db
+      - REDIS_ENABLED=true
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    volumes:
+      - atlas_data:/app/data
+      - atlas_logs:/app/logs
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - atlas-network
+
+  # Frontend Web Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: project-atlas-frontend
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - atlas-network
+
+  # Redis Cache (Optional)
+  redis:
+    image: redis:7-alpine
+    container_name: project-atlas-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - atlas-network
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: project-atlas-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - atlas-network
+    profiles:
+      - production
+
+volumes:
+  atlas_data:
+    driver: local
+  atlas_logs:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  atlas-network:
+    driver: bridge

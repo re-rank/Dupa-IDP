@@ -1,14 +1,15 @@
 import { getDatabase } from '../database/connection';
-import { AnalysisStatus as AnalysisStatusType } from '../../../shared/types';
+import { AnalysisStatus as AnalysisStatusType } from '../types';
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 
 export class AnalysisStatusModel {
   static async create(data: {
     projectId: string;
-    status?: 'pending' | 'cloning' | 'scanning' | 'analyzing' | 'generating' | 'completed' | 'failed';
+    status?: 'pending' | 'in_progress' | 'completed' | 'failed';
     progress?: number;
-  }): Promise<AnalysisStatusType & { id: string }> {
+    currentStep?: string;
+  }): Promise<AnalysisStatusType> {
     const db = getDatabase();
     const id = `status_${uuidv4()}`;
     const now = new Date();
@@ -22,43 +23,65 @@ export class AnalysisStatusModel {
           data.projectId,
           data.status || 'pending',
           data.progress || 0,
-          'Initializing analysis',
+          data.currentStep || null,
           now.toISOString()
         ]
       );
 
-      logger.info(`Created analysis status for project: ${data.projectId}`);
-      const status = await this.findByProjectId(data.projectId);
-      return { ...status!, id };
+      const status = await this.findById(id);
+      if (!status) {
+        throw new Error('Failed to create analysis status');
+      }
+
+      logger.info(`Created analysis status: ${id} for project: ${data.projectId}`);
+      return status;
     } catch (error) {
-      logger.error(`Failed to create analysis status for project ${data.projectId}:`, error);
+      logger.error('Failed to create analysis status:', error);
       throw error;
     }
   }
 
-  static async findByProjectId(projectId: string): Promise<(AnalysisStatusType & { id: string }) | null> {
+  static async findById(id: string): Promise<AnalysisStatusType | null> {
     const db = getDatabase();
     
     try {
       const row = await db.get(
-        'SELECT * FROM analysis_status WHERE project_id = ? ORDER BY started_at DESC LIMIT 1',
+        'SELECT * FROM analysis_status WHERE id = ?',
+        [id]
+      );
+
+      return row ? this.mapRowToAnalysisStatus(row) : null;
+    } catch (error) {
+      logger.error(`Failed to fetch analysis status ${id}:`, error);
+      throw error;
+    }
+  }
+
+  static async findByProjectId(projectId: string): Promise<AnalysisStatusType | null> {
+    const db = getDatabase();
+    
+    try {
+      const row = await db.get(
+        `SELECT * FROM analysis_status 
+         WHERE project_id = ? 
+         ORDER BY started_at DESC 
+         LIMIT 1`,
         [projectId]
       );
 
-      return row ? this.mapRowToStatus(row) : null;
+      return row ? this.mapRowToAnalysisStatus(row) : null;
     } catch (error) {
       logger.error(`Failed to fetch analysis status for project ${projectId}:`, error);
       throw error;
     }
   }
 
-  static async update(statusId: string, data: Partial<{
-    status: 'pending' | 'cloning' | 'scanning' | 'analyzing' | 'generating' | 'completed' | 'failed';
+  static async update(id: string, data: Partial<{
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
     progress: number;
     currentStep: string;
-    error: string | null;
-    startedAt?: Date;
-    completedAt?: Date;
+    error: string;
+    completedAt: Date;
   }>): Promise<AnalysisStatusType | null> {
     const db = getDatabase();
 
@@ -82,23 +105,8 @@ export class AnalysisStatusModel {
       }
 
       if (data.error !== undefined) {
-        updates.push('error_message = ?');
+        updates.push('error = ?');
         values.push(data.error);
-      }
-
-      if (data.status === 'completed' || data.status === 'failed') {
-        updates.push('completed_at = ?');
-        values.push(new Date().toISOString());
-      }
-
-      if (updates.length === 0) {
-        const row = await db.get('SELECT * FROM analysis_status WHERE id = ?', [statusId]);
-        return row ? this.mapRowToStatus(row) : null;
-      }
-
-      if (data.startedAt !== undefined) {
-        updates.push('started_at = ?');
-        values.push(data.startedAt.toISOString());
       }
 
       if (data.completedAt !== undefined) {
@@ -106,22 +114,78 @@ export class AnalysisStatusModel {
         values.push(data.completedAt.toISOString());
       }
 
-      values.push(statusId);
+      if (updates.length === 0) {
+        return await this.findById(id);
+      }
 
-      await db.run(
+      values.push(id);
+
+      const result = await db.run(
         `UPDATE analysis_status SET ${updates.join(', ')} WHERE id = ?`,
         values
       );
 
-      const row = await db.get('SELECT * FROM analysis_status WHERE id = ?', [statusId]);
-      return row ? this.mapRowToStatus(row) : null;
+      if (result.changes === 0) {
+        return null;
+      }
+
+      return await this.findById(id);
     } catch (error) {
-      logger.error(`Failed to update analysis status ${statusId}:`, error);
+      logger.error(`Failed to update analysis status ${id}:`, error);
       throw error;
     }
   }
 
-  static async deleteByProjectId(projectId: string): Promise<boolean> {
+  static async updateByProjectId(projectId: string, data: Partial<{
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
+    progress: number;
+    currentStep: string;
+    error: string;
+    completedAt: Date;
+  }>): Promise<AnalysisStatusType | null> {
+    const db = getDatabase();
+
+    try {
+      // Find the latest status for the project
+      const existingStatus = await this.findByProjectId(projectId);
+      
+      if (!existingStatus) {
+        // Create new status if none exists
+        return await this.create({
+          projectId,
+          ...data
+        });
+      }
+
+      return await this.update(existingStatus.id, data);
+    } catch (error) {
+      logger.error(`Failed to update analysis status for project ${projectId}:`, error);
+      throw error;
+    }
+  }
+
+  static async delete(id: string): Promise<boolean> {
+    const db = getDatabase();
+    
+    try {
+      const result = await db.run(
+        'DELETE FROM analysis_status WHERE id = ?',
+        [id]
+      );
+
+      const deleted = (result.changes || 0) > 0;
+      if (deleted) {
+        logger.info(`Deleted analysis status: ${id}`);
+      }
+
+      return deleted;
+    } catch (error) {
+      logger.error(`Failed to delete analysis status ${id}:`, error);
+      throw error;
+    }
+  }
+
+  static async deleteByProjectId(projectId: string): Promise<number> {
     const db = getDatabase();
     
     try {
@@ -130,14 +194,14 @@ export class AnalysisStatusModel {
         [projectId]
       );
 
-      const deleted = (result.changes || 0) > 0;
-      if (deleted) {
-        logger.info(`Deleted analysis status for project: ${projectId}`);
+      const deletedCount = result.changes || 0;
+      if (deletedCount > 0) {
+        logger.info(`Deleted ${deletedCount} analysis statuses for project: ${projectId}`);
       }
 
-      return deleted;
+      return deletedCount;
     } catch (error) {
-      logger.error(`Failed to delete analysis status for project ${projectId}:`, error);
+      logger.error(`Failed to delete analysis statuses for project ${projectId}:`, error);
       throw error;
     }
   }
@@ -148,27 +212,83 @@ export class AnalysisStatusModel {
     try {
       const rows = await db.all(
         `SELECT * FROM analysis_status 
-         WHERE status IN ('pending', 'cloning', 'scanning', 'analyzing', 'generating')
+         WHERE status IN ('pending', 'in_progress') 
          ORDER BY started_at ASC`
       );
 
-      return rows.map(this.mapRowToStatus);
+      return rows.map(this.mapRowToAnalysisStatus);
     } catch (error) {
       logger.error('Failed to fetch active analyses:', error);
       throw error;
     }
   }
 
-  private static mapRowToStatus(row: any): AnalysisStatusType & { id: string } {
+  static async getAnalysisStats(): Promise<{
+    total: number;
+    byStatus: Record<string, number>;
+    averageProgress: number;
+    oldestActive: Date | null;
+  }> {
+    const db = getDatabase();
+    
+    try {
+      const [totalResult, statusResults, progressResult, oldestActiveResult] = await Promise.all([
+        db.get('SELECT COUNT(*) as count FROM analysis_status'),
+        db.all('SELECT status, COUNT(*) as count FROM analysis_status GROUP BY status'),
+        db.get('SELECT AVG(progress) as avg FROM analysis_status WHERE status = "in_progress"'),
+        db.get(`SELECT MIN(started_at) as oldest FROM analysis_status 
+                WHERE status IN ('pending', 'in_progress')`)
+      ]);
+
+      const byStatus: Record<string, number> = {};
+      statusResults.forEach((row: any) => {
+        byStatus[row.status] = row.count;
+      });
+
+      return {
+        total: totalResult?.count || 0,
+        byStatus,
+        averageProgress: progressResult?.avg || 0,
+        oldestActive: oldestActiveResult?.oldest ? new Date(oldestActiveResult.oldest) : null
+      };
+    } catch (error) {
+      logger.error('Failed to get analysis stats:', error);
+      throw error;
+    }
+  }
+
+  static async cleanupCompletedStatuses(daysOld: number = 7): Promise<number> {
+    const db = getDatabase();
+    
+    try {
+      const result = await db.run(`
+        DELETE FROM analysis_status 
+        WHERE status IN ('completed', 'failed') 
+        AND completed_at < datetime('now', '-${daysOld} days')
+      `);
+
+      const deletedCount = result.changes || 0;
+      if (deletedCount > 0) {
+        logger.info(`Cleaned up ${deletedCount} old analysis statuses`);
+      }
+
+      return deletedCount;
+    } catch (error) {
+      logger.error('Failed to cleanup old analysis statuses:', error);
+      throw error;
+    }
+  }
+
+  private static mapRowToAnalysisStatus(row: any): AnalysisStatusType {
     return {
       id: row.id,
       projectId: row.project_id,
       status: row.status,
       progress: row.progress,
       currentStep: row.current_step,
+      error: row.error,
       startedAt: new Date(row.started_at),
-      completedAt: row.completed_at ? new Date(row.completed_at) : undefined,
-      error: row.error_message || undefined
+      completedAt: row.completed_at ? new Date(row.completed_at) : undefined
     };
   }
 }

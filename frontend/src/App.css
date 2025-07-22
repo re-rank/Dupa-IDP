@@ -1,154 +1,253 @@
+/* Tailwind CSS base styles */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Custom styles */
 .App {
-  text-align: center;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: #f9fafb;
 }
 
-.App-header {
-  background-color: #282c34;
-  padding: 2rem;
-  color: white;
+/* Loading animations */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.App-header h1 {
-  margin: 0;
-  font-size: 2.5rem;
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 
-.App-header p {
-  margin: 0.5rem 0 0;
-  opacity: 0.8;
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.App-main {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
 }
 
-.new-project-section {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-bottom: 2rem;
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
 }
 
-.new-project-section h2 {
-  margin-top: 0;
-  color: #333;
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
-.input-group {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
+/* Focus styles */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
 }
 
-.input-group input {
-  flex: 1;
-  padding: 0.75rem;
-  font-size: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+/* Button variants */
+.btn {
+  @apply inline-flex items-center px-4 py-2 border font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors;
 }
 
-.input-group button {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.btn-primary {
+  @apply border-transparent text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500;
 }
 
-.input-group button:hover:not(:disabled) {
-  background-color: #0056b3;
+.btn-secondary {
+  @apply border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-blue-500;
 }
 
-.input-group button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
+.btn-danger {
+  @apply border-transparent text-white bg-red-600 hover:bg-red-700 focus:ring-red-500;
 }
 
-.error {
-  color: #dc3545;
-  margin-top: 1rem;
-  padding: 0.5rem;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
+.btn-sm {
+  @apply px-3 py-1.5 text-sm;
 }
 
-.projects-section {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.btn-lg {
+  @apply px-6 py-3 text-base;
 }
 
-.projects-section h2 {
-  margin-top: 0;
-  color: #333;
+/* Card styles */
+.card {
+  @apply bg-white shadow rounded-lg;
 }
 
-.projects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin-top: 1.5rem;
+.card-header {
+  @apply px-6 py-4 border-b border-gray-200;
 }
 
-.project-card {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 1.5rem;
-  background: #f8f9fa;
-  transition: transform 0.2s, box-shadow 0.2s;
+.card-body {
+  @apply px-6 py-4;
 }
 
-.project-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+/* Status badges */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
 }
 
-.project-card h3 {
-  margin: 0 0 0.5rem;
-  color: #333;
+.badge-success {
+  @apply bg-green-100 text-green-800;
 }
 
-.project-card .repo-url {
-  font-size: 0.875rem;
-  color: #666;
-  word-break: break-all;
-  margin: 0.5rem 0;
+.badge-warning {
+  @apply bg-yellow-100 text-yellow-800;
 }
 
-.project-card .status {
-  font-size: 0.875rem;
-  color: #007bff;
-  margin: 0.25rem 0;
+.badge-error {
+  @apply bg-red-100 text-red-800;
 }
 
-.project-card .date {
-  font-size: 0.875rem;
-  color: #999;
-  margin: 0.25rem 0;
+.badge-info {
+  @apply bg-blue-100 text-blue-800;
 }
 
-.project-card button {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background-color: #28a745;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.badge-gray {
+  @apply bg-gray-100 text-gray-800;
 }
 
-.project-card button:hover {
-  background-color: #218838;
+/* Form styles */
+.form-input {
+  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500;
+}
+
+.form-input-error {
+  @apply border-red-300 focus:ring-red-500 focus:border-red-500;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-gray-700;
+}
+
+.form-error {
+  @apply mt-1 text-sm text-red-600;
+}
+
+.form-help {
+  @apply mt-1 text-sm text-gray-500;
+}
+
+/* Layout utilities */
+.container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.section {
+  @apply py-8;
+}
+
+.section-header {
+  @apply mb-8;
+}
+
+.section-title {
+  @apply text-2xl font-bold text-gray-900;
+}
+
+.section-subtitle {
+  @apply mt-2 text-gray-600;
+}
+
+/* Animation utilities */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.3s ease-in-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .mobile-hidden {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .desktop-only {
+    display: block;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-break {
+    page-break-before: always;
+  }
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+  .dark-mode {
+    /* Dark mode styles will be added here */
+  }
+}
+
+/* Accessibility improvements */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus visible for better keyboard navigation */
+.focus-visible:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .btn {
+    border-width: 2px;
+  }
+  
+  .card {
+    border: 1px solid #374151;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -1,83 +1,145 @@
-export enum FileType {
-  JavaScript = 'javascript',
-  TypeScript = 'typescript',
-  Python = 'python',
-  Java = 'java',
-  CSharp = 'csharp',
-  Go = 'go',
-  Ruby = 'ruby',
-  PHP = 'php',
-  Swift = 'swift',
-  Kotlin = 'kotlin',
-  Rust = 'rust',
-  CPlusPlus = 'cplusplus',
-  C = 'c',
-  HTML = 'html',
-  CSS = 'css',
-  SCSS = 'scss',
-  JSON = 'json',
-  YAML = 'yaml',
-  XML = 'xml',
-  Markdown = 'markdown',
-  Configuration = 'configuration',
-  Docker = 'docker',
-  SQL = 'sql',
-  GraphQL = 'graphql',
-  Other = 'other'
-}
-
 export interface FileTypeInfo {
-  type: FileType;
+  type: string;
   language: string;
-  isCode: boolean;
   isConfiguration: boolean;
   isDocumentation: boolean;
+  isTest: boolean;
+  isBinary: boolean;
 }
 
 export class FileTypeDetector {
-  private static extensionMap: Map<string, FileTypeInfo> = new Map([
-    ['.js', { type: FileType.JavaScript, language: 'JavaScript', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.jsx', { type: FileType.JavaScript, language: 'JavaScript', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.mjs', { type: FileType.JavaScript, language: 'JavaScript', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.cjs', { type: FileType.JavaScript, language: 'JavaScript', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.ts', { type: FileType.TypeScript, language: 'TypeScript', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.tsx', { type: FileType.TypeScript, language: 'TypeScript', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.mts', { type: FileType.TypeScript, language: 'TypeScript', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.cts', { type: FileType.TypeScript, language: 'TypeScript', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.py', { type: FileType.Python, language: 'Python', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.pyw', { type: FileType.Python, language: 'Python', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.java', { type: FileType.Java, language: 'Java', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.cs', { type: FileType.CSharp, language: 'C#', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.go', { type: FileType.Go, language: 'Go', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.rb', { type: FileType.Ruby, language: 'Ruby', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.php', { type: FileType.PHP, language: 'PHP', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.swift', { type: FileType.Swift, language: 'Swift', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.kt', { type: FileType.Kotlin, language: 'Kotlin', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.kts', { type: FileType.Kotlin, language: 'Kotlin', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.rs', { type: FileType.Rust, language: 'Rust', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.cpp', { type: FileType.CPlusPlus, language: 'C++', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.cc', { type: FileType.CPlusPlus, language: 'C++', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.cxx', { type: FileType.CPlusPlus, language: 'C++', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.c', { type: FileType.C, language: 'C', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.h', { type: FileType.C, language: 'C', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.hpp', { type: FileType.CPlusPlus, language: 'C++', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.html', { type: FileType.HTML, language: 'HTML', isCode: false, isConfiguration: false, isDocumentation: false }],
-    ['.htm', { type: FileType.HTML, language: 'HTML', isCode: false, isConfiguration: false, isDocumentation: false }],
-    ['.css', { type: FileType.CSS, language: 'CSS', isCode: false, isConfiguration: false, isDocumentation: false }],
-    ['.scss', { type: FileType.SCSS, language: 'SCSS', isCode: false, isConfiguration: false, isDocumentation: false }],
-    ['.sass', { type: FileType.SCSS, language: 'SCSS', isCode: false, isConfiguration: false, isDocumentation: false }],
-    ['.json', { type: FileType.JSON, language: 'JSON', isCode: false, isConfiguration: true, isDocumentation: false }],
-    ['.yaml', { type: FileType.YAML, language: 'YAML', isCode: false, isConfiguration: true, isDocumentation: false }],
-    ['.yml', { type: FileType.YAML, language: 'YAML', isCode: false, isConfiguration: true, isDocumentation: false }],
-    ['.xml', { type: FileType.XML, language: 'XML', isCode: false, isConfiguration: true, isDocumentation: false }],
-    ['.md', { type: FileType.Markdown, language: 'Markdown', isCode: false, isConfiguration: false, isDocumentation: true }],
-    ['.mdx', { type: FileType.Markdown, language: 'Markdown', isCode: false, isConfiguration: false, isDocumentation: true }],
-    ['.sql', { type: FileType.SQL, language: 'SQL', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.graphql', { type: FileType.GraphQL, language: 'GraphQL', isCode: true, isConfiguration: false, isDocumentation: false }],
-    ['.gql', { type: FileType.GraphQL, language: 'GraphQL', isCode: true, isConfiguration: false, isDocumentation: false }]
-  ]);
+  private static readonly languageMap: Record<string, string> = {
+    // JavaScript/TypeScript
+    '.js': 'JavaScript',
+    '.jsx': 'JavaScript',
+    '.mjs': 'JavaScript',
+    '.cjs': 'JavaScript',
+    '.ts': 'TypeScript',
+    '.tsx': 'TypeScript',
+    '.mts': 'TypeScript',
+    '.cts': 'TypeScript',
 
-  private static configurationFiles = new Set([
+    // Python
+    '.py': 'Python',
+    '.pyw': 'Python',
+    '.pyx': 'Python',
+    '.pyi': 'Python',
+
+    // Java
+    '.java': 'Java',
+    '.class': 'Java',
+    '.jar': 'Java',
+
+    // C/C++
+    '.c': 'C',
+    '.h': 'C',
+    '.cpp': 'C++',
+    '.cxx': 'C++',
+    '.cc': 'C++',
+    '.hpp': 'C++',
+    '.hxx': 'C++',
+
+    // C#
+    '.cs': 'C#',
+    '.csx': 'C#',
+
+    // Go
+    '.go': 'Go',
+
+    // Rust
+    '.rs': 'Rust',
+
+    // Ruby
+    '.rb': 'Ruby',
+    '.rbw': 'Ruby',
+
+    // PHP
+    '.php': 'PHP',
+    '.phtml': 'PHP',
+    '.php3': 'PHP',
+    '.php4': 'PHP',
+    '.php5': 'PHP',
+
+    // Swift
+    '.swift': 'Swift',
+
+    // Kotlin
+    '.kt': 'Kotlin',
+    '.kts': 'Kotlin',
+
+    // Dart
+    '.dart': 'Dart',
+
+    // Scala
+    '.scala': 'Scala',
+    '.sc': 'Scala',
+
+    // R
+    '.r': 'R',
+    '.R': 'R',
+
+    // MATLAB
+    '.m': 'MATLAB',
+
+    // Shell
+    '.sh': 'Shell',
+    '.bash': 'Shell',
+    '.zsh': 'Shell',
+    '.fish': 'Shell',
+    '.ps1': 'PowerShell',
+
+    // Web Technologies
+    '.html': 'HTML',
+    '.htm': 'HTML',
+    '.xhtml': 'HTML',
+    '.css': 'CSS',
+    '.scss': 'SCSS',
+    '.sass': 'Sass',
+    '.less': 'Less',
+    '.styl': 'Stylus',
+
+    // Templates
+    '.vue': 'Vue',
+    '.svelte': 'Svelte',
+    '.jsx': 'JSX',
+    '.tsx': 'TSX',
+
+    // Data formats
+    '.json': 'JSON',
+    '.xml': 'XML',
+    '.yaml': 'YAML',
+    '.yml': 'YAML',
+    '.toml': 'TOML',
+    '.ini': 'INI',
+    '.cfg': 'Config',
+    '.conf': 'Config',
+
+    // SQL
+    '.sql': 'SQL',
+
+    // Documentation
+    '.md': 'Markdown',
+    '.markdown': 'Markdown',
+    '.rst': 'reStructuredText',
+    '.txt': 'Text',
+    '.rtf': 'RTF',
+
+    // Binary/Media
+    '.png': 'Image',
+    '.jpg': 'Image',
+    '.jpeg': 'Image',
+    '.gif': 'Image',
+    '.svg': 'SVG',
+    '.ico': 'Image',
+    '.pdf': 'PDF',
+    '.zip': 'Archive',
+    '.tar': 'Archive',
+    '.gz': 'Archive',
+    '.rar': 'Archive',
+    '.7z': 'Archive'
+  };
+
+  private static readonly configurationFiles = new Set([
     'package.json',
     'package-lock.json',
     'yarn.lock',
@@ -85,99 +147,303 @@ export class FileTypeDetector {
     'composer.json',
     'composer.lock',
     'requirements.txt',
-    'requirements.in',
-    'Pipfile',
-    'Pipfile.lock',
+    'pipfile',
+    'pipfile.lock',
     'pyproject.toml',
     'setup.py',
     'setup.cfg',
     'pom.xml',
     'build.gradle',
     'build.gradle.kts',
-    'settings.gradle',
-    'settings.gradle.kts',
-    'Gemfile',
-    'Gemfile.lock',
+    'gradle.properties',
     'go.mod',
     'go.sum',
-    'Cargo.toml',
-    'Cargo.lock',
-    'CMakeLists.txt',
-    'Makefile',
+    'cargo.toml',
+    'cargo.lock',
+    'gemfile',
+    'gemfile.lock',
+    'dockerfile',
+    'docker-compose.yml',
+    'docker-compose.yaml',
+    'makefile',
+    'cmake.txt',
     'webpack.config.js',
+    'webpack.config.ts',
     'vite.config.js',
     'vite.config.ts',
     'rollup.config.js',
+    'rollup.config.ts',
+    'babel.config.js',
+    'babel.config.json',
+    '.babelrc',
     'tsconfig.json',
     'jsconfig.json',
+    'eslint.config.js',
+    '.eslintrc',
     '.eslintrc.js',
     '.eslintrc.json',
+    '.eslintrc.yml',
+    'prettier.config.js',
     '.prettierrc',
-    '.babelrc',
+    '.prettierrc.json',
+    '.prettierrc.yml',
     'jest.config.js',
-    'karma.conf.js',
+    'jest.config.ts',
+    'jest.config.json',
+    'vitest.config.js',
+    'vitest.config.ts',
+    'cypress.config.js',
+    'cypress.config.ts',
+    'playwright.config.js',
+    'playwright.config.ts',
+    '.gitignore',
+    '.gitattributes',
     '.env',
     '.env.example',
     '.env.local',
-    '.env.production',
     '.env.development',
-    'docker-compose.yml',
-    'docker-compose.yaml',
-    'Dockerfile',
-    '.dockerignore',
-    '.gitignore',
-    '.gitattributes',
-    'nginx.conf',
-    'httpd.conf',
-    '.htaccess'
+    '.env.production',
+    'next.config.js',
+    'next.config.mjs',
+    'nuxt.config.js',
+    'nuxt.config.ts',
+    'vue.config.js',
+    'angular.json',
+    'ionic.config.json',
+    'capacitor.config.json',
+    'tailwind.config.js',
+    'tailwind.config.ts',
+    'postcss.config.js',
+    'svelte.config.js',
+    'astro.config.mjs'
   ]);
 
-  public static detectFileType(fileName: string): FileTypeInfo {
-    if (this.configurationFiles.has(fileName)) {
-      if (fileName === 'Dockerfile' || fileName.startsWith('Dockerfile.')) {
-        return { type: FileType.Docker, language: 'Docker', isCode: false, isConfiguration: true, isDocumentation: false };
-      }
-      return { type: FileType.Configuration, language: 'Configuration', isCode: false, isConfiguration: true, isDocumentation: false };
-    }
+  private static readonly documentationFiles = new Set([
+    'readme.md',
+    'readme.txt',
+    'readme.rst',
+    'readme',
+    'changelog.md',
+    'changelog.txt',
+    'changelog',
+    'license',
+    'license.md',
+    'license.txt',
+    'contributing.md',
+    'contributing.txt',
+    'code_of_conduct.md',
+    'security.md',
+    'authors.md',
+    'authors.txt',
+    'contributors.md',
+    'contributors.txt',
+    'acknowledgments.md',
+    'todo.md',
+    'todo.txt',
+    'notes.md',
+    'notes.txt'
+  ]);
 
-    const extension = this.getExtension(fileName);
-    const fileTypeInfo = this.extensionMap.get(extension);
+  private static readonly testPatterns = [
+    /\.test\./,
+    /\.spec\./,
+    /test_.*\.py$/,
+    /.*_test\.go$/,
+    /.*Test\.java$/,
+    /.*Tests\.cs$/,
+    /test\/.*$/,
+    /tests\/.*$/,
+    /spec\/.*$/,
+    /__tests__\/.*$/,
+    /cypress\/.*$/,
+    /e2e\/.*$/
+  ];
 
-    if (fileTypeInfo) {
-      return fileTypeInfo;
-    }
+  private static readonly binaryExtensions = new Set([
+    '.exe', '.dll', '.so', '.dylib', '.a', '.lib',
+    '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.tiff',
+    '.mp3', '.mp4', '.avi', '.mov', '.wmv', '.flv',
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.zip', '.tar', '.gz', '.rar', '.7z', '.bz2',
+    '.class', '.jar', '.war', '.ear',
+    '.woff', '.woff2', '.ttf', '.eot',
+    '.db', '.sqlite', '.sqlite3'
+  ]);
 
-    return { type: FileType.Other, language: 'Other', isCode: false, isConfiguration: false, isDocumentation: false };
+  static detectFileType(fileName: string): FileTypeInfo {
+    const lowerFileName = fileName.toLowerCase();
+    const extension = this.getFileExtension(fileName);
+    
+    const language = this.languageMap[extension] || 'Other';
+    const isConfiguration = this.configurationFiles.has(lowerFileName) || 
+                           lowerFileName.includes('config') ||
+                           lowerFileName.startsWith('.env');
+    const isDocumentation = this.documentationFiles.has(lowerFileName) ||
+                           lowerFileName.includes('readme') ||
+                           extension === '.md';
+    const isTest = this.testPatterns.some(pattern => pattern.test(fileName));
+    const isBinary = this.binaryExtensions.has(extension);
+
+    let type = 'source';
+    if (isConfiguration) type = 'configuration';
+    else if (isDocumentation) type = 'documentation';
+    else if (isTest) type = 'test';
+    else if (isBinary) type = 'binary';
+    else if (language === 'Other') type = 'other';
+
+    return {
+      type,
+      language,
+      isConfiguration,
+      isDocumentation,
+      isTest,
+      isBinary
+    };
   }
 
-  private static getExtension(fileName: string): string {
-    const lastDot = fileName.lastIndexOf('.');
-    return lastDot !== -1 ? fileName.substring(lastDot).toLowerCase() : '';
+  static isConfigurationFile(fileName: string): boolean {
+    const lowerFileName = fileName.toLowerCase();
+    return this.configurationFiles.has(lowerFileName) || 
+           lowerFileName.includes('config') ||
+           lowerFileName.startsWith('.env');
   }
 
-  public static isCodeFile(fileName: string): boolean {
-    return this.detectFileType(fileName).isCode;
+  static isDocumentationFile(fileName: string): boolean {
+    const lowerFileName = fileName.toLowerCase();
+    return this.documentationFiles.has(lowerFileName) ||
+           lowerFileName.includes('readme') ||
+           this.getFileExtension(fileName) === '.md';
   }
 
-  public static isConfigurationFile(fileName: string): boolean {
-    return this.detectFileType(fileName).isConfiguration;
+  static isTestFile(fileName: string): boolean {
+    return this.testPatterns.some(pattern => pattern.test(fileName));
   }
 
-  public static isDocumentationFile(fileName: string): boolean {
-    return this.detectFileType(fileName).isDocumentation;
+  static isBinaryFile(fileName: string): boolean {
+    const extension = this.getFileExtension(fileName);
+    return this.binaryExtensions.has(extension);
   }
 
-  public static getLanguageStats(fileNames: string[]): Map<string, number> {
+  static getLanguageStats(fileNames: string[]): Map<string, number> {
     const stats = new Map<string, number>();
 
     for (const fileName of fileNames) {
       const fileType = this.detectFileType(fileName);
-      if (fileType.type !== FileType.Other) {
-        const count = stats.get(fileType.language) || 0;
-        stats.set(fileType.language, count + 1);
+      if (fileType.language !== 'Other' && !fileType.isBinary) {
+        stats.set(fileType.language, (stats.get(fileType.language) || 0) + 1);
       }
     }
 
     return stats;
+  }
+
+  static getFileTypeStats(fileNames: string[]): Map<string, number> {
+    const stats = new Map<string, number>();
+
+    for (const fileName of fileNames) {
+      const fileType = this.detectFileType(fileName);
+      stats.set(fileType.type, (stats.get(fileType.type) || 0) + 1);
+    }
+
+    return stats;
+  }
+
+  static categorizeFiles(fileNames: string[]): {
+    source: string[];
+    configuration: string[];
+    documentation: string[];
+    test: string[];
+    binary: string[];
+    other: string[];
+  } {
+    const categories = {
+      source: [] as string[],
+      configuration: [] as string[],
+      documentation: [] as string[],
+      test: [] as string[],
+      binary: [] as string[],
+      other: [] as string[]
+    };
+
+    for (const fileName of fileNames) {
+      const fileType = this.detectFileType(fileName);
+      
+      switch (fileType.type) {
+        case 'source':
+          categories.source.push(fileName);
+          break;
+        case 'configuration':
+          categories.configuration.push(fileName);
+          break;
+        case 'documentation':
+          categories.documentation.push(fileName);
+          break;
+        case 'test':
+          categories.test.push(fileName);
+          break;
+        case 'binary':
+          categories.binary.push(fileName);
+          break;
+        default:
+          categories.other.push(fileName);
+      }
+    }
+
+    return categories;
+  }
+
+  static getSupportedLanguages(): string[] {
+    const languages = new Set(Object.values(this.languageMap));
+    languages.delete('Other');
+    return Array.from(languages).sort();
+  }
+
+  static getLanguageExtensions(language: string): string[] {
+    return Object.entries(this.languageMap)
+      .filter(([, lang]) => lang === language)
+      .map(([ext]) => ext);
+  }
+
+  private static getFileExtension(fileName: string): string {
+    const lastDotIndex = fileName.lastIndexOf('.');
+    if (lastDotIndex === -1 || lastDotIndex === 0) {
+      return '';
+    }
+    return fileName.substring(lastDotIndex).toLowerCase();
+  }
+
+  static isSourceFile(fileName: string): boolean {
+    const fileType = this.detectFileType(fileName);
+    return fileType.type === 'source' && !fileType.isBinary;
+  }
+
+  static shouldAnalyzeFile(fileName: string, options?: {
+    includeTests?: boolean;
+    includeBinary?: boolean;
+    includeConfig?: boolean;
+    maxFileSize?: number;
+  }): boolean {
+    const {
+      includeTests = false,
+      includeBinary = false,
+      includeConfig = true
+    } = options || {};
+
+    const fileType = this.detectFileType(fileName);
+
+    // Always exclude binary files unless explicitly included
+    if (fileType.isBinary && !includeBinary) {
+      return false;
+    }
+
+    // Exclude test files unless explicitly included
+    if (fileType.isTest && !includeTests) {
+      return false;
+    }
+
+    // Include source files and optionally config files
+    return fileType.type === 'source' || 
+           (fileType.isConfiguration && includeConfig) ||
+           fileType.isDocumentation;
   }
 }

@@ -1,6 +1,8 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { logger } from '../utils/logger';
-import { createError } from '../middleware/errorHandler';
+import { AppError } from '../middlewares/errorHandler';
+import { asyncHandler } from '../middlewares/asyncHandler';
+import { validate } from '../middlewares/validator';
 import { ProjectModel } from '../models/Project';
 import { AnalysisResultModel } from '../models/AnalysisResult';
 import Joi from 'joi';
@@ -11,57 +13,73 @@ const router = Router();
 const createProjectSchema = Joi.object({
   name: Joi.string().min(1).max(255).required(),
   repositoryUrl: Joi.string().uri().required(),
-  repositoryType: Joi.string().valid('single', 'multi').default('single')
+  repositoryType: Joi.string().valid('single', 'multi').default('single'),
+  branch: Joi.string().optional().default('main')
 });
 
 const updateProjectSchema = Joi.object({
   name: Joi.string().min(1).max(255).optional()
 });
 
+const projectIdSchema = Joi.object({
+  id: Joi.string().required()
+});
+
 // GET /api/projects - List all projects
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { status } = req.query;
+router.get('/', 
+  asyncHandler(async (req, res) => {
+    const { status, limit = 50, offset = 0 } = req.query;
     
     let projects;
     if (status && typeof status === 'string') {
       if (!['pending', 'analyzing', 'completed', 'failed'].includes(status)) {
-        return next(createError('Invalid status filter', 400));
+        throw new AppError('Invalid status filter', 400);
       }
       projects = await ProjectModel.findByStatus(status as any);
     } else {
       projects = await ProjectModel.findAll();
     }
     
+    // Apply pagination
+    const startIndex = parseInt(offset as string) || 0;
+    const limitNum = parseInt(limit as string) || 50;
+    const paginatedProjects = projects.slice(startIndex, startIndex + limitNum);
+    
     res.json({
       success: true,
-      data: projects,
-      count: projects.length,
+      data: {
+        projects: paginatedProjects,
+        pagination: {
+          total: projects.length,
+          limit: limitNum,
+          offset: startIndex,
+          hasMore: startIndex + limitNum < projects.length
+        }
+      },
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
-    logger.error('Failed to fetch projects:', error);
-    next(createError('Failed to fetch projects', 500));
-  }
-});
+  })
+);
 
 // GET /api/projects/:id - Get specific project
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
+router.get('/:id', 
+  validate({ params: projectIdSchema }),
+  asyncHandler(async (req, res) => {
     const { id } = req.params;
-    
-    if (!id) {
-      return next(createError('Project ID is required', 400));
-    }
 
     const project = await ProjectModel.findById(id);
     
     if (!project) {
-      return next(createError('Project not found', 404));
+      throw new AppError('Project not found', 404);
     }
 
     // Get analysis metrics if available
-    const metrics = await AnalysisResultModel.getProjectMetrics(id);
+    let metrics = null;
+    try {
+      metrics = await AnalysisResultModel.getProjectMetrics(id);
+    } catch (error) {
+      logger.warn(`Failed to fetch metrics for project ${id}:`, error);
+    }
 
     res.json({
       success: true,
@@ -71,36 +89,34 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
       },
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
-    logger.error(`Failed to fetch project ${req.params.id}:`, error);
-    next(createError('Failed to fetch project', 500));
-  }
-});
+  })
+);
 
 // POST /api/projects - Create new project
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    // Validate request body
-    const { error, value } = createProjectSchema.validate(req.body);
-    if (error) {
-      return next(createError(error.details[0].message, 400));
-    }
-
-    const { name, repositoryUrl, repositoryType } = value;
+router.post('/', 
+  validate({ body: createProjectSchema }),
+  asyncHandler(async (req, res) => {
+    const { name, repositoryUrl, repositoryType, branch } = req.body;
 
     // Check if project with same repository URL already exists
     const existingProjects = await ProjectModel.findAll();
     const duplicate = existingProjects.find(p => p.repositoryUrl === repositoryUrl);
     
     if (duplicate) {
-      return next(createError('Project with this repository URL already exists', 409));
+      throw new AppError('Project with this repository URL already exists', 409);
+    }
+
+    // Validate repository URL format
+    if (!repositoryUrl.match(/^https?:\/\/.+\.git$|^git@.+:.+\.git$/)) {
+      throw new AppError('Invalid repository URL format. Must be a valid Git URL', 400);
     }
 
     // Create new project
     const newProject = await ProjectModel.create({
       name,
       repositoryUrl,
-      repositoryType
+      repositoryType,
+      branch
     });
 
     logger.info(`Created new project: ${name} (${repositoryUrl})`);
@@ -111,35 +127,28 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       message: 'Project created successfully',
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
-    logger.error('Failed to create project:', error);
-    next(createError('Failed to create project', 500));
-  }
-});
+  })
+);
 
 // PUT /api/projects/:id - Update project
-router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
+router.put('/:id', 
+  validate({ 
+    params: projectIdSchema,
+    body: updateProjectSchema 
+  }),
+  asyncHandler(async (req, res) => {
     const { id } = req.params;
-    
-    if (!id) {
-      return next(createError('Project ID is required', 400));
-    }
-
-    // Validate request body
-    const { error, value } = updateProjectSchema.validate(req.body);
-    if (error) {
-      return next(createError(error.details[0].message, 400));
-    }
 
     // Check if project exists
     const existingProject = await ProjectModel.findById(id);
     if (!existingProject) {
-      return next(createError('Project not found', 404));
+      throw new AppError('Project not found', 404);
     }
 
     // Update project
-    const updatedProject = await ProjectModel.update(id, value);
+    const updatedProject = await ProjectModel.update(id, req.body);
+
+    logger.info(`Updated project: ${id}`);
 
     res.json({
       success: true,
@@ -147,32 +156,26 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
       message: 'Project updated successfully',
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
-    logger.error(`Failed to update project ${req.params.id}:`, error);
-    next(createError('Failed to update project', 500));
-  }
-});
+  })
+);
 
 // DELETE /api/projects/:id - Delete project
-router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
+router.delete('/:id', 
+  validate({ params: projectIdSchema }),
+  asyncHandler(async (req, res) => {
     const { id } = req.params;
-    
-    if (!id) {
-      return next(createError('Project ID is required', 400));
-    }
 
     // Check if project exists
     const existingProject = await ProjectModel.findById(id);
     if (!existingProject) {
-      return next(createError('Project not found', 404));
+      throw new AppError('Project not found', 404);
     }
 
     // Delete project (this will cascade delete related records)
     const deleted = await ProjectModel.delete(id);
     
     if (!deleted) {
-      return next(createError('Failed to delete project', 500));
+      throw new AppError('Failed to delete project', 500);
     }
 
     logger.info(`Deleted project: ${id}`);
@@ -182,10 +185,43 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
       message: 'Project deleted successfully',
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
-    logger.error(`Failed to delete project ${req.params.id}:`, error);
-    next(createError('Failed to delete project', 500));
-  }
-});
+  })
+);
+
+// POST /api/projects/:id/analyze - Start project analysis
+router.post('/:id/analyze',
+  validate({ params: projectIdSchema }),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { force = false, options = {} } = req.body;
+
+    const project = await ProjectModel.findById(id);
+    if (!project) {
+      throw new AppError('Project not found', 404);
+    }
+
+    // Check if analysis is already in progress
+    if (project.status === 'analyzing' && !force) {
+      throw new AppError('Analysis already in progress', 409);
+    }
+
+    // Update project status
+    await ProjectModel.update(id, { status: 'analyzing' });
+
+    // TODO: Start analysis job (will be implemented with queue system)
+    logger.info(`Starting analysis for project: ${id}`);
+
+    res.json({
+      success: true,
+      message: 'Analysis started successfully',
+      data: {
+        projectId: id,
+        status: 'analyzing',
+        startedAt: new Date().toISOString()
+      },
+      timestamp: new Date().toISOString()
+    });
+  })
+);
 
 export default router;

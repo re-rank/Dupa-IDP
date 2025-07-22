@@ -1,3 +1,9 @@
+/**
+ * Database Connection Manager
+ * 
+ * Handles SQLite database connection and schema initialization
+ */
+
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import path from 'path';
@@ -6,34 +12,135 @@ import { logger } from '../utils/logger';
 
 let db: Database<sqlite3.Database, sqlite3.Statement> | null = null;
 
+/**
+ * Initialize the database connection and schema
+ */
 export const initializeDatabase = async (): Promise<Database<sqlite3.Database, sqlite3.Statement>> => {
   try {
-    const dbPath = process.env.DATABASE_URL || './data/atlas.db';
+    const dbPath = process.env.DATABASE_PATH || './data/atlas.db';
     const dbDir = path.dirname(dbPath);
-    
-    // Ensure database directory exists
-    await fs.mkdir(dbDir, { recursive: true });
-    
+
+    // Create data directory if it doesn't exist
+    try {
+      await fs.access(dbDir);
+    } catch {
+      await fs.mkdir(dbDir, { recursive: true });
+      logger.info(`Created database directory: ${dbDir}`);
+    }
+
     // Open database connection
     db = await open({
       filename: dbPath,
       driver: sqlite3.Database
     });
 
-    // Enable foreign keys
+    // Configure database for optimal performance
     await db.exec('PRAGMA foreign_keys = ON');
-    
-    // Run migrations
-    await runMigrations(db);
-    
+    await db.exec('PRAGMA journal_mode = WAL');
+    await db.exec('PRAGMA synchronous = NORMAL');
+    await db.exec('PRAGMA cache_size = -2000'); // 2MB cache
+    await db.exec('PRAGMA temp_store = MEMORY');
+
+    // Initialize database schema
+    await initializeSchema();
+
+    // Run migrations if needed
+    await runMigrations();
+
     logger.info(`✅ Database initialized successfully at ${dbPath}`);
     return db;
   } catch (error) {
-    logger.error('❌ Failed to initialize database:', error);
+    logger.error('Failed to initialize database:', error);
     throw error;
   }
 };
 
+/**
+ * Initialize the database schema from schema.sql
+ */
+const initializeSchema = async () => {
+  if (!db) throw new Error('Database not initialized');
+
+  try {
+    // Read schema from file
+    const schemaPath = path.join(__dirname, 'schema.sql');
+    const schema = await fs.readFile(schemaPath, 'utf-8');
+    
+    // Execute schema
+    await db.exec(schema);
+    
+    logger.info('Database schema initialized successfully');
+  } catch (error) {
+    logger.error('Failed to initialize schema:', error);
+    throw error;
+  }
+};
+
+/**
+ * Run database migrations
+ */
+const runMigrations = async () => {
+  if (!db) throw new Error('Database not initialized');
+
+  // Create migrations table if it doesn't exist
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS migrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Get list of applied migrations
+  const appliedMigrations = await db.all<{ name: string }>(
+    'SELECT name FROM migrations ORDER BY id'
+  );
+  const applied = new Set(appliedMigrations.map(m => m.name));
+
+  // Read migration files
+  const migrationsDir = path.join(__dirname, 'migrations');
+  
+  try {
+    await fs.access(migrationsDir);
+    const files = await fs.readdir(migrationsDir);
+    const migrationFiles = files
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+
+    // Apply new migrations
+    for (const file of migrationFiles) {
+      if (!applied.has(file)) {
+        logger.info(`Applying migration: ${file}`);
+        const migrationPath = path.join(migrationsDir, file);
+        const migration = await fs.readFile(migrationPath, 'utf-8');
+        
+        await db.exec('BEGIN TRANSACTION');
+        try {
+          await db.exec(migration);
+          await db.run('INSERT INTO migrations (name) VALUES (?)', file);
+          await db.exec('COMMIT');
+          logger.info(`✅ Migration applied: ${file}`);
+        } catch (error) {
+          await db.exec('ROLLBACK');
+          throw error;
+        }
+      }
+    }
+
+    logger.info('All database migrations completed successfully');
+  } catch (error) {
+    if ((error as any).code === 'ENOENT') {
+      logger.info('No migrations directory found, skipping migrations');
+    } else {
+      logger.error('Failed to run migrations:', error);
+      throw error;
+    }
+  }
+};
+
+/**
+ * Get the database instance
+ */
 export const getDatabase = (): Database<sqlite3.Database, sqlite3.Statement> => {
   if (!db) {
     throw new Error('Database not initialized. Call initializeDatabase() first.');
@@ -41,6 +148,9 @@ export const getDatabase = (): Database<sqlite3.Database, sqlite3.Statement> => 
   return db;
 };
 
+/**
+ * Close the database connection
+ */
 export const closeDatabase = async (): Promise<void> => {
   if (db) {
     await db.close();
@@ -49,118 +159,45 @@ export const closeDatabase = async (): Promise<void> => {
   }
 };
 
-const runMigrations = async (database: Database<sqlite3.Database, sqlite3.Statement>): Promise<void> => {
+/**
+ * Check database health
+ */
+export const checkDatabaseHealth = async (): Promise<boolean> => {
   try {
-    // Create migrations table if it doesn't exist
-    await database.exec(`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        executed_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Define migrations
-    const migrations = [
-      {
-        name: '001_create_projects_table',
-        sql: `
-          CREATE TABLE IF NOT EXISTS projects (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            repository_url TEXT NOT NULL,
-            repository_type TEXT CHECK(repository_type IN ('single', 'multi')) DEFAULT 'single',
-            status TEXT CHECK(status IN ('pending', 'analyzing', 'completed', 'failed')) DEFAULT 'pending',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_analyzed_at DATETIME
-          );
-          
-          CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
-          CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at);
-        `
-      },
-      {
-        name: '002_create_analysis_results_table',
-        sql: `
-          CREATE TABLE IF NOT EXISTS analysis_results (
-            id TEXT PRIMARY KEY,
-            project_id TEXT NOT NULL,
-            result_data TEXT NOT NULL, -- JSON data
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-          );
-          
-          CREATE INDEX IF NOT EXISTS idx_analysis_results_project_id ON analysis_results(project_id);
-          CREATE INDEX IF NOT EXISTS idx_analysis_results_created_at ON analysis_results(created_at);
-        `
-      },
-      {
-        name: '003_create_dependencies_table',
-        sql: `
-          CREATE TABLE IF NOT EXISTS dependencies (
-            id TEXT PRIMARY KEY,
-            project_id TEXT NOT NULL,
-            source TEXT NOT NULL,
-            target TEXT NOT NULL,
-            type TEXT NOT NULL,
-            method TEXT,
-            endpoint TEXT,
-            confidence REAL,
-            source_file TEXT,
-            line_number INTEGER,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-          );
-          
-          CREATE INDEX IF NOT EXISTS idx_dependencies_project_id ON dependencies(project_id);
-          CREATE INDEX IF NOT EXISTS idx_dependencies_type ON dependencies(type);
-          CREATE INDEX IF NOT EXISTS idx_dependencies_source ON dependencies(source);
-          CREATE INDEX IF NOT EXISTS idx_dependencies_target ON dependencies(target);
-        `
-      },
-      {
-        name: '004_create_analysis_status_table',
-        sql: `
-          CREATE TABLE IF NOT EXISTS analysis_status (
-            id TEXT PRIMARY KEY,
-            project_id TEXT NOT NULL,
-            status TEXT CHECK(status IN ('pending', 'cloning', 'scanning', 'analyzing', 'generating', 'completed', 'failed')) DEFAULT 'pending',
-            progress INTEGER DEFAULT 0,
-            current_step TEXT,
-            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            completed_at DATETIME,
-            error_message TEXT,
-            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-          );
-          
-          CREATE INDEX IF NOT EXISTS idx_analysis_status_project_id ON analysis_status(project_id);
-          CREATE INDEX IF NOT EXISTS idx_analysis_status_status ON analysis_status(status);
-        `
-      }
-    ];
-
-    // Execute migrations
-    for (const migration of migrations) {
-      const existing = await database.get(
-        'SELECT name FROM migrations WHERE name = ?',
-        migration.name
-      );
-
-      if (!existing) {
-        logger.info(`Running migration: ${migration.name}`);
-        await database.exec(migration.sql);
-        await database.run(
-          'INSERT INTO migrations (name) VALUES (?)',
-          migration.name
-        );
-        logger.info(`✅ Migration completed: ${migration.name}`);
-      }
-    }
-
-    logger.info('All database migrations completed successfully');
+    if (!db) return false;
+    
+    const result = await db.get('SELECT 1 as health');
+    return result?.health === 1;
   } catch (error) {
-    logger.error('Failed to run database migrations:', error);
-    throw error;
+    logger.error('Database health check failed:', error);
+    return false;
+  }
+};
+
+/**
+ * Get database statistics
+ */
+export const getDatabaseStats = async (): Promise<any> => {
+  try {
+    if (!db) throw new Error('Database not initialized');
+    
+    const [projects, analysisResults, analysisJobs] = await Promise.all([
+      db.get('SELECT COUNT(*) as count FROM projects'),
+      db.get('SELECT COUNT(*) as count FROM analysis_results'),
+      db.get('SELECT COUNT(*) as count FROM analysis_jobs')
+    ]);
+
+    return {
+      projects: projects?.count || 0,
+      analysisResults: analysisResults?.count || 0,
+      analysisJobs: analysisJobs?.count || 0
+    };
+  } catch (error) {
+    logger.error('Failed to get database stats:', error);
+    return {
+      projects: 0,
+      analysisResults: 0,
+      analysisJobs: 0
+    };
   }
 };

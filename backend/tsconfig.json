@@ -21,18 +21,17 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node",
-    "baseUrl": "./",
+    "baseUrl": "./src",
     "paths": {
-      "@/*": ["src/*"],
-      "@shared/*": ["../shared/*"]
+      "@/*": ["./*"],
+      "@types/*": ["./types/*"]
     },
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
   "include": [
-    "src/**/*",
-    "../shared/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

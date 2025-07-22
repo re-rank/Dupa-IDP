@@ -1,175 +1,131 @@
-import React, { useState, useEffect } from 'react'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { Toaster } from 'react-hot-toast';
 
-interface Project {
-  id: string
-  name: string
-  repositoryUrl: string
-  status: string
-  createdAt: string
-}
+// Components
+import Layout from './components/Layout/Layout';
+import ProjectList from './pages/ProjectList';
+import ProjectDetail from './pages/ProjectDetail';
+import CreateProject from './pages/CreateProject';
+import Dashboard from './pages/Dashboard';
+import Settings from './pages/Settings';
+import LoadingSpinner from './components/UI/LoadingSpinner';
+import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
+
+// Hooks
+import { useHealthCheck } from './hooks/useHealthCheck';
+
+// Styles
+import './App.css';
+
+// Create React Query client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
 
 function App() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [newProjectUrl, setNewProjectUrl] = useState('')
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false);
+  const { isHealthy, isLoading: healthLoading, error: healthError } = useHealthCheck();
 
   useEffect(() => {
-    checkBackendHealth()
-  }, [])
-
-  const checkBackendHealth = async (retries = 5) => {
-    try {
-      const response = await fetch('/api/health')
-      if (response.ok) {
-        // Backend is ready, fetch projects
-        fetchProjects()
-      } else if (retries > 0) {
-        console.log(`Backend health check failed, retrying... (${retries} attempts left)`)
-        setTimeout(() => checkBackendHealth(retries - 1), 1000)
-      } else {
-        setError('Unable to connect to backend server')
-        setLoading(false)
-      }
-    } catch (err) {
-      if (retries > 0) {
-        console.log(`Backend not ready, retrying... (${retries} attempts left)`)
-        setTimeout(() => checkBackendHealth(retries - 1), 1000)
-      } else {
-        setError('Unable to connect to backend server')
-        setLoading(false)
-      }
+    // Initialize app once health check passes
+    if (isHealthy && !healthLoading) {
+      setIsInitialized(true);
     }
-  }
+  }, [isHealthy, healthLoading]);
 
-  const fetchProjects = async (retries = 3) => {
-    try {
-      const response = await fetch('/api/projects')
-      if (!response.ok) {
-        if (response.status === 502 && retries > 0) {
-          // Proxy error - backend might not be ready yet
-          console.log(`Backend not ready, retrying... (${retries} attempts left)`)
-          setTimeout(() => fetchProjects(retries - 1), 1000)
-          return
-        }
-        throw new Error('Failed to fetch projects')
-      }
-      const data = await response.json()
-      setProjects(data.projects || [])
-      setError(null)
-    } catch (err) {
-      if (retries > 0) {
-        console.log(`Connection failed, retrying... (${retries} attempts left)`)
-        setTimeout(() => fetchProjects(retries - 1), 1000)
-        return
-      }
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      if (retries === 0) {
-        setLoading(false)
-      }
-    }
-  }
-
-  const analyzeProject = async () => {
-    if (!newProjectUrl.trim()) return
-
-    setIsAnalyzing(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newProjectUrl.split('/').pop() || 'New Project',
-          repositoryUrl: newProjectUrl,
-          branch: 'main'
-        }),
-      })
-
-      if (!response.ok) throw new Error('Failed to create project')
-      
-      const newProject = await response.json()
-      
-      // Start analysis
-      const analysisResponse = await fetch(`/api/projects/${newProject.id}/analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (!analysisResponse.ok) throw new Error('Failed to start analysis')
-
-      // Refresh projects list
-      await fetchProjects()
-      setNewProjectUrl('')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setIsAnalyzing(false)
-    }
+  // Show loading screen while initializing
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <h2 className="mt-4 text-xl font-semibold text-gray-900">
+            Initializing Project Atlas
+          </h2>
+          {healthLoading && (
+            <p className="mt-2 text-gray-600">Checking system health...</p>
+          )}
+          {healthError && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-red-800">
+                Failed to connect to backend server. Please ensure the server is running.
+              </p>
+              <p className="text-sm text-red-600 mt-1">
+                {healthError}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>🗺️ Project Atlas</h1>
-        <p>Analyze and visualize your codebase architecture</p>
-      </header>
-
-      <main className="App-main">
-        <section className="new-project-section">
-          <h2>Analyze a New Project</h2>
-          <div className="input-group">
-            <input
-              type="text"
-              placeholder="Enter Git repository URL (e.g., https://github.com/user/repo.git)"
-              value={newProjectUrl}
-              onChange={(e) => setNewProjectUrl(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && analyzeProject()}
-              disabled={isAnalyzing}
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <div className="App">
+            <Layout>
+              <Routes>
+                {/* Dashboard */}
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                
+                {/* Projects */}
+                <Route path="/projects" element={<ProjectList />} />
+                <Route path="/projects/new" element={<CreateProject />} />
+                <Route path="/projects/:id" element={<ProjectDetail />} />
+                
+                {/* Settings */}
+                <Route path="/settings" element={<Settings />} />
+                
+                {/* Catch all */}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </Layout>
+            
+            {/* Toast notifications */}
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
+                },
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: '#10B981',
+                    secondary: '#fff',
+                  },
+                },
+                error: {
+                  duration: 5000,
+                  iconTheme: {
+                    primary: '#EF4444',
+                    secondary: '#fff',
+                  },
+                },
+              }}
             />
-            <button 
-              onClick={analyzeProject} 
-              disabled={isAnalyzing || !newProjectUrl.trim()}
-            >
-              {isAnalyzing ? 'Analyzing...' : 'Start Analysis'}
-            </button>
           </div>
-          {error && <div className="error">{error}</div>}
-        </section>
-
-        <section className="projects-section">
-          <h2>Your Projects</h2>
-          {loading ? (
-            <p>Loading projects...</p>
-          ) : projects.length === 0 ? (
-            <p>No projects yet. Add your first project above!</p>
-          ) : (
-            <div className="projects-grid">
-              {projects.map((project) => (
-                <div key={project.id} className="project-card">
-                  <h3>{project.name}</h3>
-                  <p className="repo-url">{project.repositoryUrl}</p>
-                  <p className="status">Status: {project.status}</p>
-                  <p className="date">Created: {new Date(project.createdAt).toLocaleDateString()}</p>
-                  <button onClick={() => window.location.href = `/project/${project.id}`}>
-                    View Analysis
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
-    </div>
-  )
+        </Router>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
 }
 
-export default App
+export default App;
