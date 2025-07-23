@@ -34,7 +34,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function App() {
+function AppContent() {
   const [isInitialized, setIsInitialized] = useState(false);
   const { isHealthy, isLoading: healthLoading, error: healthError } = useHealthCheck();
 
@@ -73,9 +73,7 @@ function App() {
   }
 
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <Router>
+    <Router>
           <div className="App">
             <Layout>
               <Routes>
@@ -123,6 +121,14 @@ function App() {
             />
           </div>
         </Router>
+  );
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AppContent />
       </QueryClientProvider>
     </ErrorBoundary>
   );
