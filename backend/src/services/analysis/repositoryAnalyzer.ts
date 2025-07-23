@@ -7,7 +7,7 @@
 
 import path from 'path';
 import fs from 'fs/promises';
-import { gitService, FileInfo } from '../git/gitService';
+import { getGitService, FileInfo } from '../git/gitService';
 import { FileTypeDetector, FileTypeInfo } from './fileTypeDetector';
 import { FrameworkDetector, FrameworkInfo } from './frameworkDetector';
 import { logger } from '../../utils/logger';
@@ -110,6 +110,7 @@ export class RepositoryAnalyzer {
 
     try {
       // Use existing gitService for cloning
+      const gitService = getGitService();
       await gitService.cloneRepository(url, repoPath, { branch });
       return repoPath;
     } catch (error: any) {
@@ -121,6 +122,7 @@ export class RepositoryAnalyzer {
    * Scan directory and build file structure (implements design.md interface)
    */
   async scanDirectory(path: string): Promise<FileStructure> {
+    const gitService = getGitService();
     const files = await gitService.scanRepository(path);
     const stats = this.calculateStats(files);
     const directories = this.extractDirectories(files);
@@ -173,6 +175,7 @@ export class RepositoryAnalyzer {
   ): Promise<RepositoryStructure> {
     logger.info(`Starting repository analysis for project: ${project.id}`);
 
+    const gitService = getGitService();
     const files = await gitService.scanRepository(repoPath);
     const stats = this.calculateStats(files);
     const directories = this.extractDirectories(files);

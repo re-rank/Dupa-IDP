@@ -394,4 +394,4 @@ export const getGitService = (): GitService => {
 };
 
 // For backward compatibility
-export const gitService = process.env.NODE_ENV === 'test' ? null : getGitService();
+export const gitService = getGitService();

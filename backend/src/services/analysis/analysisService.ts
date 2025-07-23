@@ -2,7 +2,7 @@ import { logger } from '../../utils/logger';
 import { ProjectModel } from '../../models/Project';
 import { AnalysisStatusModel } from '../../models/AnalysisStatus';
 import { AnalysisResultModel } from '../../models/AnalysisResult';
-import { gitService } from '../git/gitService';
+import { getGitService } from '../git/gitService';
 import { repositoryAnalyzer, RepositoryAnalyzer } from './repositoryAnalyzer';
 import { FrameworkDetector } from './frameworkDetector';
 import { DependencyExtractor } from './dependencyExtractor';
@@ -93,6 +93,7 @@ export class AnalysisService {
       await fs.mkdir(tempDir, { recursive: true });
 
       try {
+        const gitService = getGitService();
         const repoPath = await gitService.cloneRepository(
           project.repositoryUrl,
           tempDir,

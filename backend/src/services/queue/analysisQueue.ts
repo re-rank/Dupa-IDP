@@ -1,6 +1,6 @@
 import Bull from 'bull';
 import path from 'path';
-import { gitService } from '../git/gitService';
+import { getGitService } from '../git/gitService';
 import { repositoryAnalyzer, RepositoryAnalyzer } from '../analysis/repositoryAnalyzer';
 import { FrameworkDetector } from '../analysis/frameworkDetector';
 import { DependencyExtractor } from '../analysis/dependencyExtractor';
@@ -75,6 +75,7 @@ try {
         // Clone repository
         logger.info(`Cloning repository: ${project.repositoryUrl}`);
         const tempDir = path.join(process.cwd(), 'temp', 'repos', projectId);
+        const gitService = getGitService();
         const repoPath = await gitService.cloneRepository(
           project.repositoryUrl,
           tempDir,
@@ -198,7 +199,8 @@ try {
         await job.progress(100);
 
         // Cleanup repository
-        await gitService.cleanupRepository(projectId);
+        const gitServiceCleanup = getGitService();
+        await gitServiceCleanup.cleanupRepository(projectId);
 
         logger.info(`Analysis completed for project: ${projectId}`);
         
@@ -228,7 +230,8 @@ try {
 
         // Cleanup on failure
         try {
-          await gitService.cleanupRepository(projectId);
+          const gitServiceError = getGitService();
+          await gitServiceError.cleanupRepository(projectId);
         } catch (cleanupError) {
           logger.error(`Failed to cleanup repository for project ${projectId}:`, cleanupError);
         }
