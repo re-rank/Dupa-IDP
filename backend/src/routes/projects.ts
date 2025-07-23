@@ -193,7 +193,7 @@ router.post('/:id/analyze',
   validate({ params: projectIdSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { force = false, options = {} } = req.body;
+    const { force = false } = req.body;
 
     const project = await ProjectModel.findById(id);
     if (!project) {

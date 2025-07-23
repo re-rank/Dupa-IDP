@@ -10,12 +10,11 @@ export class AnalysisStatusModel {
     progress?: number;
     currentStep?: string;
   }): Promise<AnalysisStatusType> {
-    const db = getDatabase();
     const id = `status_${uuidv4()}`;
     const now = new Date();
 
     try {
-      await db.run(
+      await getDatabase().run(
         `INSERT INTO analysis_status (id, project_id, status, progress, current_step, started_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
         [
@@ -42,10 +41,9 @@ export class AnalysisStatusModel {
   }
 
   static async findById(id: string): Promise<AnalysisStatusType | null> {
-    const db = getDatabase();
     
     try {
-      const row = await db.get(
+      const row = await getDatabase().get(
         'SELECT * FROM analysis_status WHERE id = ?',
         [id]
       );
@@ -58,10 +56,9 @@ export class AnalysisStatusModel {
   }
 
   static async findByProjectId(projectId: string): Promise<AnalysisStatusType | null> {
-    const db = getDatabase();
     
     try {
-      const row = await db.get(
+      const row = await getDatabase().get(
         `SELECT * FROM analysis_status 
          WHERE project_id = ? 
          ORDER BY started_at DESC 
@@ -84,7 +81,6 @@ export class AnalysisStatusModel {
     completedAt: Date;
     startedAt?: Date;
   }>): Promise<AnalysisStatusType | null> {
-    const db = getDatabase();
 
     try {
       const updates: string[] = [];
@@ -126,7 +122,7 @@ export class AnalysisStatusModel {
 
       values.push(id);
 
-      const result = await db.run(
+      const result = await getDatabase().run(
         `UPDATE analysis_status SET ${updates.join(', ')} WHERE id = ?`,
         values
       );
@@ -150,7 +146,6 @@ export class AnalysisStatusModel {
     completedAt: Date;
     startedAt?: Date;
   }>): Promise<AnalysisStatusType | null> {
-    const db = getDatabase();
 
     try {
       // Find the latest status for the project
@@ -172,10 +167,9 @@ export class AnalysisStatusModel {
   }
 
   static async delete(id: string): Promise<boolean> {
-    const db = getDatabase();
     
     try {
-      const result = await db.run(
+      const result = await getDatabase().run(
         'DELETE FROM analysis_status WHERE id = ?',
         [id]
       );
@@ -193,10 +187,9 @@ export class AnalysisStatusModel {
   }
 
   static async deleteByProjectId(projectId: string): Promise<number> {
-    const db = getDatabase();
     
     try {
-      const result = await db.run(
+      const result = await getDatabase().run(
         'DELETE FROM analysis_status WHERE project_id = ?',
         [projectId]
       );
@@ -214,10 +207,9 @@ export class AnalysisStatusModel {
   }
 
   static async findActiveAnalyses(): Promise<AnalysisStatusType[]> {
-    const db = getDatabase();
     
     try {
-      const rows = await db.all(
+      const rows = await getDatabase().all(
         `SELECT * FROM analysis_status 
          WHERE status IN ('pending', 'in_progress') 
          ORDER BY started_at ASC`
@@ -236,14 +228,13 @@ export class AnalysisStatusModel {
     averageProgress: number;
     oldestActive: Date | null;
   }> {
-    const db = getDatabase();
     
     try {
       const [totalResult, statusResults, progressResult, oldestActiveResult] = await Promise.all([
-        db.get('SELECT COUNT(*) as count FROM analysis_status'),
-        db.all('SELECT status, COUNT(*) as count FROM analysis_status GROUP BY status'),
-        db.get('SELECT AVG(progress) as avg FROM analysis_status WHERE status = "in_progress"'),
-        db.get(`SELECT MIN(started_at) as oldest FROM analysis_status 
+        getDatabase().get('SELECT COUNT(*) as count FROM analysis_status'),
+        getDatabase().all('SELECT status, COUNT(*) as count FROM analysis_status GROUP BY status'),
+        getDatabase().get('SELECT AVG(progress) as avg FROM analysis_status WHERE status = "in_progress"'),
+        getDatabase().get(`SELECT MIN(started_at) as oldest FROM analysis_status 
                 WHERE status IN ('pending', 'in_progress')`)
       ]);
 
@@ -265,10 +256,9 @@ export class AnalysisStatusModel {
   }
 
   static async cleanupCompletedStatuses(daysOld: number = 7): Promise<number> {
-    const db = getDatabase();
     
     try {
-      const result = await db.run(`
+      const result = await getDatabase().run(`
         DELETE FROM analysis_status 
         WHERE status IN ('completed', 'failed') 
         AND completed_at < datetime('now', '-${daysOld} days')

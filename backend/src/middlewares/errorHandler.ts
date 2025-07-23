@@ -139,7 +139,7 @@ export const errorHandler = (
   err: Error | AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
   // Default error values
   let statusCode = 500;
@@ -234,7 +234,7 @@ export const errorHandler = (
 /**
  * Async error wrapper for route handlers
  */
-export const asyncHandler = (fn: Function) => (
+export const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) => (
   req: Request,
   res: Response,
   next: NextFunction
