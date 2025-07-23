@@ -107,7 +107,7 @@ router.post('/',
     }
 
     // Validate repository URL format
-    if (!repositoryUrl.match(/^https?:\/\/.+\.git$|^git@.+:.+\.git$/)) {
+    if (!repositoryUrl.match(/^https?:\/\/(github\.com|gitlab\.com|bitbucket\.org|[\w.-]+\.[\w]+)\/.+|^git@.+:.+$/)) {
       throw new AppError('Invalid repository URL format. Must be a valid Git URL', 400);
     }
 
