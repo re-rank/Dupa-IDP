@@ -7,7 +7,7 @@ WORKDIR /app/frontend
 
 # Copy frontend package files
 COPY frontend/package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy frontend source
 COPY frontend/ ./
@@ -22,7 +22,7 @@ WORKDIR /app/backend
 
 # Copy backend package files
 COPY backend/package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy backend source and shared types
 COPY backend/ ./
@@ -31,7 +31,18 @@ COPY shared/ ../shared/
 # Build backend
 RUN npm run build
 
-# Stage 3: Production image
+# Stage 3: Production dependencies
+FROM node:20-alpine AS prod-deps
+
+WORKDIR /app/backend
+COPY backend/package*.json ./
+RUN npm ci --only=production
+
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci --only=production
+
+# Stage 4: Production image
 FROM node:20-alpine AS production
 
 # Install system dependencies
@@ -49,7 +60,7 @@ WORKDIR /app
 
 # Copy built backend
 COPY --from=backend-builder --chown=atlas:nodejs /app/backend/dist ./backend/dist
-COPY --from=backend-builder --chown=atlas:nodejs /app/backend/node_modules ./backend/node_modules
+COPY --from=prod-deps --chown=atlas:nodejs /app/backend/node_modules ./backend/node_modules
 COPY --from=backend-builder --chown=atlas:nodejs /app/backend/package.json ./backend/
 
 # Copy built frontend
