@@ -26,20 +26,17 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Create nginx user
-RUN addgroup -g 1001 -S nginx
-RUN adduser -S atlas -u 1001 -G nginx
+# nginx user already exists in nginx:alpine image
+# Just set proper permissions
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    touch /var/run/nginx.pid && \
+    chown nginx:nginx /var/run/nginx.pid && \
+    chmod -R 755 /usr/share/nginx/html
 
-# Set permissions
-RUN chown -R atlas:nginx /usr/share/nginx/html
-RUN chown -R atlas:nginx /var/cache/nginx
-RUN chown -R atlas:nginx /var/log/nginx
-RUN chown -R atlas:nginx /etc/nginx/conf.d
-RUN touch /var/run/nginx.pid
-RUN chown -R atlas:nginx /var/run/nginx.pid
-
-# Switch to non-root user
-USER atlas
+# Switch to nginx user
+USER nginx
 
 # Expose port
 EXPOSE 80
