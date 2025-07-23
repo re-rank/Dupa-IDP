@@ -21,7 +21,7 @@ global.console = {
 };
 
 // Increase test timeout for CI environments
-jest.setTimeout(30000);
+jest.setTimeout(10000);
 
 // Clean up after each test
 afterEach(() => {

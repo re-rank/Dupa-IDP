@@ -27,8 +27,8 @@
     "lint:frontend": "cd frontend && npm run lint",
     "lint:fix": "npm run lint:backend -- --fix && npm run lint:frontend -- --fix",
     "clean": "npm run clean:backend && npm run clean:frontend",
-    "clean:backend": "cd backend && rm -rf dist node_modules",
-    "clean:frontend": "cd frontend && rm -rf dist node_modules",
+    "clean:backend": "cd backend && rimraf dist node_modules",
+    "clean:frontend": "cd frontend && rimraf dist node_modules",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
   },
   "keywords": [
@@ -47,7 +47,8 @@
   "devDependencies": {
     "concurrently": "^8.2.2",
     "husky": "^8.0.3",
-    "lint-staged": "^15.2.0"
+    "lint-staged": "^15.2.0",
+    "rimraf": "^5.0.5"
   },
   "lint-staged": {
     "backend/src/**/*.{ts,tsx}": [

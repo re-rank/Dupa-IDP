@@ -23,7 +23,9 @@
   },
   "include": [
     "src",
-    "../shared"
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.d.ts"
   ],
   "references": [
     {

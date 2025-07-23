@@ -6,6 +6,8 @@ export interface Project {
   repositoryType: 'single' | 'multi';
   branch?: string;
   status: 'pending' | 'analyzing' | 'completed' | 'failed';
+  description?: string;
+  tags?: string[];
   createdAt: Date;
   updatedAt: Date;
   lastAnalyzedAt?: Date;
