@@ -67,7 +67,8 @@ describe('GitService', () => {
     });
 
     it('should throw error on clone failure', async () => {
-      const git = require('simple-git').default();
+      const { simpleGit } = await import('simple-git');
+      const git = simpleGit();
       git.clone.mockRejectedValueOnce(new Error('Clone failed'));
 
       const targetPath = path.join(process.cwd(), 'temp', 'repos', testProjectId);

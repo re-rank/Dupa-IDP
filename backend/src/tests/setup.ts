@@ -31,6 +31,6 @@ afterEach(() => {
 // Force garbage collection if available
 if (global.gc) {
   afterEach(() => {
-    global.gc();
+    global.gc?.();
   });
 }

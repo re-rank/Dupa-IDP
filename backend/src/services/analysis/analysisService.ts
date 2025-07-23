@@ -35,12 +35,16 @@ export class AnalysisService {
     activeJobs.set(jobId, job);
     
     // Start analysis in background
-    this.runAnalysis(job).catch(error => {
-      logger.error(`Analysis job ${jobId} failed:`, error);
-      job.status = 'failed';
-      job.error = error.message;
-      job.completedAt = new Date();
-    });
+    setTimeout(() => {
+      this.runAnalysis(job).catch(error => {
+        logger.error(`Analysis job ${jobId} failed:`, error);
+        logger.error('Error stack:', error.stack);
+        logger.error('Full error object:', JSON.stringify(error, null, 2));
+        job.status = 'failed';
+        job.error = error.message;
+        job.completedAt = new Date();
+      });
+    }, 1000); // 1초 지연 후 실행
 
     return job;
   }
@@ -90,9 +94,13 @@ export class AnalysisService {
 
       // Step 2: Clone repository
       const tempDir = path.join(process.cwd(), 'temp', `analysis_${projectId}_${Date.now()}`);
+      logger.info(`Creating temp directory: ${tempDir}`);
       await fs.mkdir(tempDir, { recursive: true });
 
       try {
+        logger.info(`Starting repository clone for ${project.repositoryUrl}`);
+        logger.info(`Clone options: branch=${options.branch || project.branch || 'main'}, depth=${options.depth || 1}`);
+        
         const gitService = getGitService();
         const repoPath = await gitService.cloneRepository(
           project.repositoryUrl,
@@ -102,6 +110,8 @@ export class AnalysisService {
             depth: options.depth || 1
           }
         );
+        
+        logger.info(`Repository cloned successfully to: ${repoPath}`);
 
         job.progress = 30;
         await AnalysisStatusModel.updateByProjectId(projectId, {

@@ -208,6 +208,7 @@ export interface AnalysisOptions {
   frameworks?: string[];
   maxFileSize?: number;
   timeout?: number;
+  force?: boolean;
 }
 
 // Export and Report Types

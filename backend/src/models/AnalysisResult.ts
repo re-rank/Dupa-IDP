@@ -14,11 +14,20 @@ export class AnalysisResultModel {
 
     try {
       await db.run(
-        `INSERT INTO analysis_results (id, project_id, data, created_at)
-         VALUES (?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO analysis_results (
+          id, project_id, version, structure, dependencies, apis, 
+          databases, frameworks, metrics, data, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           data.projectId,
+          1,
+          JSON.stringify(data.analysisData.structure || {}),
+          JSON.stringify(data.analysisData.dependencies || []),
+          JSON.stringify(data.analysisData.apiCalls || []),
+          JSON.stringify(data.analysisData.databaseConnections || []),
+          JSON.stringify(data.analysisData.frameworks || []),
+          JSON.stringify(data.analysisData.metrics || {}),
           JSON.stringify(data.analysisData),
           now.toISOString()
         ]
@@ -161,7 +170,7 @@ export class AnalysisResultModel {
     
     try {
       const rows = await db.all(
-        `SELECT data, created_at FROM analysis_results 
+        `SELECT data, metrics, created_at FROM analysis_results 
          WHERE project_id = ? 
          AND created_at > datetime('now', '-${days} days')
          ORDER BY created_at ASC`,
@@ -169,12 +178,23 @@ export class AnalysisResultModel {
       );
 
       return rows.map((row: any) => {
-        const data = JSON.parse(row.data) as AnalysisData;
+        let metrics;
+        try {
+          if (row.data) {
+            const data = JSON.parse(row.data) as AnalysisData;
+            metrics = data.metrics;
+          } else if (row.metrics) {
+            metrics = JSON.parse(row.metrics);
+          }
+        } catch (error) {
+          logger.warn('Failed to parse metrics data:', error);
+        }
+        
         return {
           date: row.created_at,
-          metrics: data.metrics
+          metrics: metrics || {}
         };
-      }).filter(item => item.metrics);
+      }).filter(item => item.metrics && Object.keys(item.metrics).length > 0);
     } catch (error) {
       logger.error(`Failed to get analysis history for project ${projectId}:`, error);
       throw error;
@@ -195,7 +215,7 @@ export class AnalysisResultModel {
       const totalProjects = await db.get('SELECT COUNT(DISTINCT project_id) as count FROM analysis_results');
       
       // Get all analysis results to calculate aggregated stats
-      const allResults = await db.all('SELECT data FROM analysis_results');
+      const allResults = await db.all('SELECT data, structure, frameworks, metrics FROM analysis_results');
       
       const languageStats = new Map<string, number>();
       const frameworkStats = new Map<string, number>();
@@ -204,7 +224,18 @@ export class AnalysisResultModel {
 
       for (const row of allResults) {
         try {
-          const data = JSON.parse(row.data) as AnalysisData;
+          let data: AnalysisData;
+          
+          if (row.data) {
+            data = JSON.parse(row.data) as AnalysisData;
+          } else {
+            // Fallback to individual columns
+            data = {
+              structure: row.structure ? JSON.parse(row.structure) : {},
+              frameworks: row.frameworks ? JSON.parse(row.frameworks) : [],
+              metrics: row.metrics ? JSON.parse(row.metrics) : {}
+            } as AnalysisData;
+          }
           
           // Aggregate language stats
           if (data.structure?.languageDistribution) {
@@ -285,7 +316,54 @@ export class AnalysisResultModel {
     let data: AnalysisData;
     
     try {
-      data = JSON.parse(row.data);
+      if (row.data) {
+        data = JSON.parse(row.data);
+      } else {
+        // Fallback to individual columns for backward compatibility
+        data = {
+          summary: {
+            projectType: 'Unknown',
+            primaryLanguage: 'Unknown',
+            stack: 'unknown',
+            confidence: 0
+          },
+          structure: row.structure ? JSON.parse(row.structure) : {
+            rootPath: '',
+            totalFiles: 0,
+            totalSize: 0,
+            languageDistribution: {},
+            fileTypeDistribution: {},
+            directories: [],
+            importantFiles: {
+              entry: [],
+              configuration: [],
+              documentation: [],
+              tests: [],
+              build: []
+            }
+          },
+          frameworks: row.frameworks ? JSON.parse(row.frameworks) : [],
+          dependencies: row.dependencies ? JSON.parse(row.dependencies) : [],
+          apiCalls: row.apis ? JSON.parse(row.apis) : [],
+          databaseConnections: row.databases ? JSON.parse(row.databases) : [],
+          environmentVariables: [],
+          dependencyGraph: {
+            nodes: [],
+            edges: []
+          },
+          metrics: row.metrics ? JSON.parse(row.metrics) : {
+            totalFiles: 0,
+            totalLines: 0,
+            totalAPICalls: 0,
+            totalDatabaseConnections: 0,
+            totalDependencies: 0,
+            totalFrameworks: 0,
+            complexityScore: 0,
+            maintainabilityIndex: 0,
+            technicalDebtRatio: 0
+          }
+        };
+      }
     } catch (error) {
       logger.error(`Failed to parse analysis data for result ${row.id}:`, error);
       // Return a minimal valid structure

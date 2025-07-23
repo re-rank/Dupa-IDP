@@ -6,22 +6,28 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    host: true,
+    strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path
-      }
-    }
-  },
-  preview: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:3003',
         changeOrigin: true,
         secure: false
       }
     }
-  }
+  },
+  preview: {
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3003',
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  },
+  optimizeDeps: {
+    exclude: ['lucide-react'],
+  },
 })

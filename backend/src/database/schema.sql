@@ -78,6 +78,21 @@ CREATE TABLE IF NOT EXISTS api_endpoints (
 CREATE INDEX IF NOT EXISTS idx_api_endpoints_project_id ON api_endpoints(project_id);
 CREATE INDEX IF NOT EXISTS idx_api_endpoints_method_path ON api_endpoints(method, path);
 
+-- Analysis status table for real-time tracking
+CREATE TABLE IF NOT EXISTS analysis_status (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  status TEXT CHECK(status IN ('pending', 'cloning', 'scanning', 'analyzing', 'generating', 'completed', 'failed', 'in_progress')) NOT NULL,
+  progress INTEGER DEFAULT 0,
+  current_step TEXT,
+  error TEXT,
+  error_details JSON,
+  started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  completed_at DATETIME,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  metadata JSON
+);
+
 -- Analysis jobs table for tracking
 CREATE TABLE IF NOT EXISTS analysis_jobs (
   id TEXT PRIMARY KEY,

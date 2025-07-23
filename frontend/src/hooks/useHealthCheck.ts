@@ -21,7 +21,17 @@ export function useHealthCheck(interval: number = 30000) {
     refetch
   } = useQuery<HealthStatus>(
     'health-check',
-    () => api.get('/health'),
+    async () => {
+      console.log('Making health check request...');
+      try {
+        const result = await api.get('/health');
+        console.log('Health check response:', result);
+        return result;
+      } catch (error) {
+        console.error('Health check error:', error);
+        throw error;
+      }
+    },
     {
       refetchInterval: interval,
       refetchIntervalInBackground: true,

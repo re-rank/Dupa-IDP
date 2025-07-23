@@ -1,31 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run dev:*)",
-      "Bash(npm install)",
-      "Bash(PORT=3001 npm run dev)",
-      "Bash(npm install:*)",
-      "Bash(pkill:*)",
-      "Bash(true)",
-      "Bash(PORT=3002 npm run dev)",
-      "Bash(git add:*)",
-      "Bash(git push:*)",
-      "Bash(dir)",
-      "Bash(ls:*)",
-      "Bash(mkdir:*)",
-      "Bash(grep:*)",
-      "Bash(git commit:*)",
       "Bash(npm run build:*)",
-      "Bash(npx tsc:*)",
-      "Bash(npm test)",
-      "Bash(npm test:*)",
       "Bash(npm run lint)",
-      "Bash(npm run test:*)",
-      "Bash(rm:*)",
-      "Bash(sqlite3:*)",
-      "Bash(taskkill:*)",
-      "Bash(cmd //c:*)",
-      "Bash(curl:*)"
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

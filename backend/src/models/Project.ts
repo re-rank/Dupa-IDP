@@ -38,7 +38,19 @@ export class ProjectModel {
       logger.info(`Created project: ${data.name} (${id})`);
       return project;
     } catch (error) {
-      logger.error('Failed to create project:', error);
+      logger.error('Failed to create project - Database error details:');
+      logger.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+      logger.error('SQL query failed for table: projects');
+      logger.error('Values attempted:', {
+        id,
+        name: data.name,
+        repositoryUrl: data.repositoryUrl,
+        repositoryType: data.repositoryType || 'single',
+        branch: data.branch || 'main',
+        status: 'pending',
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString()
+      });
       throw error;
     }
   }

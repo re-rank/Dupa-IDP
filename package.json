@@ -5,12 +5,12 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/project-atlas.git"
+    "url": "https://github.com/re-rank/refacta.git"
   },
   "bugs": {
-    "url": "https://github.com/your-org/project-atlas/issues"
+    "url": "https://github.com/re-rank/refacta/issues"
   },
-  "homepage": "https://github.com/your-org/project-atlas#readme",
+  "homepage": "https://github.com/re-rank/refacta#readme",
   "scripts": {
     "dev": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
@@ -29,9 +29,7 @@
     "clean": "npm run clean:backend && npm run clean:frontend",
     "clean:backend": "cd backend && rm -rf dist node_modules",
     "clean:frontend": "cd frontend && rm -rf dist node_modules",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "postinstall": "husky install",
-    "prepare": "husky install"
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
   },
   "keywords": [
     "code-analysis",

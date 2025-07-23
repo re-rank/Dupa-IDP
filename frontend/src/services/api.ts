@@ -30,9 +30,16 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
     // Return data directly for successful responses
+    // For health endpoints, return the response as is
+    if (response.config.url?.includes('/health')) {
+      return response.data;
+    }
     return response.data.data || response.data;
   },
   (error) => {
+    // Skip toast notifications for health check endpoints
+    const isHealthCheck = error.config?.url?.includes('/health');
+    
     // Handle different error types
     if (error.response) {
       // Server responded with error status
@@ -45,29 +52,29 @@ axiosInstance.interceptors.response.use(
           window.location.href = '/login';
           break;
         case 403:
-          toast.error('Access denied');
+          if (!isHealthCheck) toast.error('Access denied');
           break;
         case 404:
-          toast.error('Resource not found');
+          if (!isHealthCheck) toast.error('Resource not found');
           break;
         case 429:
-          toast.error('Too many requests. Please try again later.');
+          if (!isHealthCheck) toast.error('Too many requests. Please try again later.');
           break;
         case 500:
-          toast.error('Server error. Please try again later.');
+          if (!isHealthCheck) toast.error('Server error. Please try again later.');
           break;
         default:
-          toast.error(data?.error?.message || 'An error occurred');
+          if (!isHealthCheck) toast.error(data?.error?.message || 'An error occurred');
       }
       
       return Promise.reject(data?.error || error.response);
     } else if (error.request) {
       // Network error
-      toast.error('Network error. Please check your connection.');
+      if (!isHealthCheck) toast.error('Network error. Please check your connection.');
       return Promise.reject(new Error('Network error'));
     } else {
       // Other error
-      toast.error('An unexpected error occurred');
+      if (!isHealthCheck) toast.error('An unexpected error occurred');
       return Promise.reject(error);
     }
   }

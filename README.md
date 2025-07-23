@@ -48,8 +48,8 @@ An open-source tool for automated code structure analysis and visualization of s
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-org/project-atlas.git
-cd project-atlas
+git clone https://github.com/re-rank/refacta.git
+cd refacta
 ```
 
 ### 2. Install dependencies
@@ -382,14 +382,13 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - [D3.js](https://d3js.org/) - Data visualization
 - [Mermaid](https://mermaid.js.org/) - Diagram generation
 - [Simple-Git](https://github.com/steveukx/git-js) - Git operations
-- All our [contributors](https://github.com/your-org/project-atlas/contributors)
+- All our [contributors](https://github.com/re-rank/refacta/contributors)
 
 ## 📞 Support
 
-- 📧 Email: support@project-atlas.dev
-- 💬 Discord: [Join our community](https://discord.gg/project-atlas)
-- 🐛 Issues: [GitHub Issues](https://github.com/your-org/project-atlas/issues)
-- 📖 Docs: [Documentation](https://docs.project-atlas.dev)
+- 🐛 Issues: [GitHub Issues](https://github.com/re-rank/refacta/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/re-rank/refacta/discussions)
+- 📖 Wiki: [Project Wiki](https://github.com/re-rank/refacta/wiki)
 
 ---
 

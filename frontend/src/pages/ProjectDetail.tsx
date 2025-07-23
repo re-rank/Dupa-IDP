@@ -1,11 +1,14 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { api } from '../services/api';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
+import AnalysisResults from '../components/AnalysisResults';
+import toast from 'react-hot-toast';
 
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
 
   const { data: project, isLoading, error } = useQuery(
     ['project', id],
@@ -14,6 +17,23 @@ const ProjectDetail: React.FC = () => {
       enabled: !!id
     }
   );
+
+  const analyzeMutation = useMutation(
+    (force?: boolean) => api.post(`/projects/${id}/analyze`, { force }),
+    {
+      onSuccess: () => {
+        toast.success('Analysis started successfully');
+        queryClient.invalidateQueries(['project', id]);
+      },
+      onError: (error: any) => {
+        toast.error(error?.message || 'Failed to start analysis');
+      }
+    }
+  );
+
+  const handleAnalyze = (force: boolean = false) => {
+    analyzeMutation.mutate(force);
+  };
 
   if (isLoading) {
     return (
@@ -82,11 +102,15 @@ const ProjectDetail: React.FC = () => {
               </svg>
               Export
             </button>
-            <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+            <button 
+              onClick={() => handleAnalyze(true)}
+              disabled={analyzeMutation.isLoading || project.status === 'analyzing'}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Re-analyze
+              {analyzeMutation.isLoading ? 'Starting...' : 'Re-analyze'}
             </button>
           </div>
         </div>
@@ -134,23 +158,7 @@ const ProjectDetail: React.FC = () => {
 
       {/* Analysis Results */}
       {project.status === 'completed' ? (
-        <div className="space-y-8">
-          {/* Placeholder for analysis results */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Analysis Results</h2>
-            </div>
-            <div className="px-6 py-8 text-center">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Analysis visualization coming soon</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Interactive dependency graphs, framework detection, and API mapping will be displayed here.
-              </p>
-            </div>
-          </div>
-        </div>
+        <AnalysisResults projectId={project.id} />
       ) : project.status === 'analyzing' ? (
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-8 text-center">
@@ -174,8 +182,12 @@ const ProjectDetail: React.FC = () => {
               The analysis failed to complete. This could be due to repository access issues or an internal error.
             </p>
             <div className="mt-6">
-              <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                Try Again
+              <button 
+                onClick={() => handleAnalyze(true)}
+                disabled={analyzeMutation.isLoading}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {analyzeMutation.isLoading ? 'Starting...' : 'Try Again'}
               </button>
             </div>
           </div>
@@ -191,8 +203,12 @@ const ProjectDetail: React.FC = () => {
               This project is waiting to be analyzed. Click the button below to start the analysis.
             </p>
             <div className="mt-6">
-              <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                Start Analysis
+              <button 
+                onClick={() => handleAnalyze(false)}
+                disabled={analyzeMutation.isLoading}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {analyzeMutation.isLoading ? 'Starting...' : 'Start Analysis'}
               </button>
             </div>
           </div>

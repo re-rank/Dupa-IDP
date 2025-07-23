@@ -158,5 +158,30 @@ ssl/
 
 # Local configuration
 .claude/
-*.localbackend.log
-nul
+*.local
+
+# Test and debug scripts
+test-*.js
+check-*.js
+*-test.js
+*-debug.js
+fix-*.js
+recreate-*.js
+run-*.js
+
+# Batch files
+*.bat
+
+# Temporary files
+backend/temp/
+temp/
+tmp/
+
+# Log files
+*.log
+logs/
+
+# Personal IDE settings
+.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json

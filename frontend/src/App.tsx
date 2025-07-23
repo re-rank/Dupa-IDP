@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
 
@@ -32,6 +32,48 @@ const queryClient = new QueryClient({
       retry: 1,
     },
   },
+});
+
+// Create router with future flags
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Layout><Outlet /></Layout>,
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/dashboard" replace />
+      },
+      {
+        path: "dashboard",
+        element: <Dashboard />
+      },
+      {
+        path: "projects",
+        element: <ProjectList />
+      },
+      {
+        path: "projects/new",
+        element: <CreateProject />
+      },
+      {
+        path: "projects/:id",
+        element: <ProjectDetail />
+      },
+      {
+        path: "settings",
+        element: <Settings />
+      },
+      {
+        path: "*",
+        element: <Navigate to="/dashboard" replace />
+      }
+    ]
+  }
+], {
+  future: {
+    v7_relativeSplatPath: true,
+  }
 });
 
 function AppContent() {
@@ -73,54 +115,35 @@ function AppContent() {
   }
 
   return (
-    <Router>
-          <div className="App">
-            <Layout>
-              <Routes>
-                {/* Dashboard */}
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                
-                {/* Projects */}
-                <Route path="/projects" element={<ProjectList />} />
-                <Route path="/projects/new" element={<CreateProject />} />
-                <Route path="/projects/:id" element={<ProjectDetail />} />
-                
-                {/* Settings */}
-                <Route path="/settings" element={<Settings />} />
-                
-                {/* Catch all */}
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-              </Routes>
-            </Layout>
-            
-            {/* Toast notifications */}
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-                success: {
-                  duration: 3000,
-                  iconTheme: {
-                    primary: '#10B981',
-                    secondary: '#fff',
-                  },
-                },
-                error: {
-                  duration: 5000,
-                  iconTheme: {
-                    primary: '#EF4444',
-                    secondary: '#fff',
-                  },
-                },
-              }}
-            />
-          </div>
-        </Router>
+    <div className="App">
+      <RouterProvider router={router} />
+      
+      {/* Toast notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: '#10B981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            duration: 5000,
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
+    </div>
   );
 }
 

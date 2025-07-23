@@ -33,11 +33,21 @@ export class GitService {
 
   constructor() {
     this.timeout = parseInt(process.env.GIT_TIMEOUT || '30000');
-    this.git = simpleGit({
+    
+    // Windows 환경에서 Git 실행 파일 경로 설정
+    const gitOptions: any = {
       timeout: {
         block: this.timeout
       }
-    });
+    };
+    
+    // Windows에서 Git 경로를 명시적으로 설정
+    if (process.platform === 'win32') {
+      gitOptions.binary = 'git';
+      gitOptions.config = [];
+    }
+    
+    this.git = simpleGit(gitOptions);
   }
 
   async cloneRepository(
@@ -70,9 +80,17 @@ export class GitService {
       ];
 
       // Add timeout option
-      const git = simpleGit({
+      const gitOptions: any = {
         timeout: { block: timeout }
-      });
+      };
+      
+      // Windows에서 Git 경로를 명시적으로 설정
+      if (process.platform === 'win32') {
+        gitOptions.binary = 'git';
+        gitOptions.config = [];
+      }
+      
+      const git = simpleGit(gitOptions);
 
       await git.clone(repositoryUrl, targetPath, cloneOptions);
 
@@ -81,6 +99,17 @@ export class GitService {
 
     } catch (error) {
       logger.error(`Failed to clone repository ${repositoryUrl}:`, error);
+      logger.error('Clone error details:', {
+        repositoryUrl,
+        targetPath,
+        branch,
+        depth,
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        } : error
+      });
       
       // Cleanup on failure
       try {

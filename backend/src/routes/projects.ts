@@ -6,6 +6,7 @@ import { asyncHandler } from '../middlewares/asyncHandler';
 import { validate } from '../middlewares/validator';
 import { ProjectModel } from '../models/Project';
 import { AnalysisResultModel } from '../models/AnalysisResult';
+import { AnalysisService } from '../services/analysis/analysisService';
 import Joi from 'joi';
 
 const router = Router();
@@ -136,7 +137,10 @@ router.post('/', (req: Request, res: Response, next) => {
       timestamp: new Date().toISOString()
     });
     } catch (error) {
-      console.error('Project creation error:', error);
+      console.error('Project creation error details:');
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('Full error object:', error);
       throw error;
     }
   })
@@ -200,6 +204,32 @@ router.delete('/:id',
   })
 );
 
+// GET /api/projects/:id/results - Get analysis results
+router.get('/:id/results',
+  validate({ params: projectIdSchema }),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    // Get all analysis results for the project
+    const results = await AnalysisResultModel.findByProjectId(id);
+
+    if (!results || results.length === 0) {
+      throw new AppError('No analysis results found for this project', 404);
+    }
+
+    // Return results sorted by creation date (newest first)
+    const sortedResults = results.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    res.json({
+      success: true,
+      data: sortedResults,
+      timestamp: new Date().toISOString()
+    });
+  })
+);
+
 // POST /api/projects/:id/analyze - Start project analysis
 router.post('/:id/analyze',
   validate({ params: projectIdSchema }),
@@ -217,22 +247,31 @@ router.post('/:id/analyze',
       throw new AppError('Analysis already in progress', 409);
     }
 
-    // Update project status
-    await ProjectModel.update(id, { status: 'analyzing' });
+    // Start analysis job
+    try {
+      const job = await AnalysisService.performAnalysis(id, {
+        force: force || false,
+        branch: project.branch
+      });
 
-    // TODO: Start analysis job (will be implemented with queue system)
-    logger.info(`Starting analysis for project: ${id}`);
+      logger.info(`Started analysis job ${job.id} for project: ${id}`);
 
-    res.json({
-      success: true,
-      message: 'Analysis started successfully',
-      data: {
-        projectId: id,
-        status: 'analyzing',
-        startedAt: new Date().toISOString()
-      },
-      timestamp: new Date().toISOString()
-    });
+      res.json({
+        success: true,
+        message: 'Analysis started successfully',
+        data: {
+          projectId: id,
+          jobId: job.id,
+          status: 'analyzing',
+          startedAt: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      // If job creation fails, revert status
+      await ProjectModel.update(id, { status: project.status });
+      throw error;
+    }
   })
 );
 

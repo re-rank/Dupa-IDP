@@ -352,7 +352,7 @@ export class DependencyGraphBuilder {
 
   private normalizeEndpoint(endpoint: string): string {
     // Remove protocol and domain
-    let normalized = endpoint.replace(/^https?:\/\/[^\/]+/, '');
+    let normalized = endpoint.replace(/^https?:\/\/[^/]+/, '');
     
     // Remove query parameters
     normalized = normalized.split('?')[0];

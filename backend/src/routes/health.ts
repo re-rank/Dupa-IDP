@@ -3,7 +3,6 @@ import { asyncHandler } from '../middlewares/asyncHandler';
 import { checkDatabaseHealth, getDatabaseStats } from '../database/connection';
 import { CacheService } from '../services/redis/redisClient';
 import { ProjectModel } from '../models/Project';
-import { AnalysisStatusModel } from '../models/AnalysisStatus';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -41,13 +40,9 @@ router.get('/detailed',
 
     // Get application stats
     let projectStats = null;
-    let analysisStats = null;
 
     try {
-      [projectStats, analysisStats] = await Promise.all([
-        ProjectModel.getProjectStats(),
-        AnalysisStatusModel.getAnalysisStats()
-      ]);
+      projectStats = await ProjectModel.getProjectStats();
     } catch (error) {
       logger.warn('Failed to get application stats for health check:', error);
     }
@@ -89,8 +84,7 @@ router.get('/detailed',
       },
 
       application: {
-        projects: projectStats,
-        analyses: analysisStats
+        projects: projectStats
       }
     };
 
@@ -135,9 +129,8 @@ router.get('/live',
 router.get('/metrics', 
   asyncHandler(async (req: Request, res: Response) => {
     try {
-      const [projectStats, analysisStats, dbStats] = await Promise.all([
+      const [projectStats, dbStats] = await Promise.all([
         ProjectModel.getProjectStats(),
-        AnalysisStatusModel.getAnalysisStats(),
         getDatabaseStats()
       ]);
 
@@ -165,16 +158,6 @@ router.get('/metrics',
         `# TYPE atlas_projects_by_status gauge`,
         ...Object.entries(projectStats.byStatus).map(([status, count]) => 
           `atlas_projects_by_status{status="${status}"} ${count}`
-        ),
-        '',
-        `# HELP atlas_analyses_total Total number of analyses`,
-        `# TYPE atlas_analyses_total gauge`,
-        `atlas_analyses_total ${analysisStats.total}`,
-        '',
-        `# HELP atlas_analyses_by_status Number of analyses by status`,
-        `# TYPE atlas_analyses_by_status gauge`,
-        ...Object.entries(analysisStats.byStatus).map(([status, count]) => 
-          `atlas_analyses_by_status{status="${status}"} ${count}`
         ),
         '',
         `# HELP atlas_database_records Number of database records`,
