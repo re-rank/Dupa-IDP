@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import * as util from 'util';
 import { logger } from '../utils/logger';
 import { AppError } from '../middlewares/errorHandler';
 import { asyncHandler } from '../middlewares/asyncHandler';
@@ -93,11 +94,16 @@ router.get('/:id',
 );
 
 // POST /api/projects - Create new project
-router.post('/', 
+router.post('/', (req: Request, res: Response, next) => {
+  console.log('=== CREATE PROJECT REQUEST ===');
+  console.log('Headers:', req.headers);
+  console.log('Body:', util.inspect(req.body, { depth: null }));
+  next();
+}, 
   validate({ body: createProjectSchema }),
   asyncHandler(async (req: Request, res: Response) => {
     try {
-      console.log('Create project request body:', req.body);
+      console.log('Validation passed, processing request...');
     const { name, repositoryUrl, repositoryType, branch } = req.body;
 
     // Check if project with same repository URL already exists

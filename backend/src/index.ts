@@ -126,6 +126,13 @@ if (process.env.TRUST_PROXY) {
 /**
  * API Routes
  */
+// Debug endpoint
+app.post('/api/debug', (req, res) => {
+  console.log('DEBUG: Request received');
+  console.log('Body:', req.body);
+  res.json({ success: true, body: req.body });
+});
+
 app.use('/api/health', healthRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/analysis', analysisRoutes);

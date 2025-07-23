@@ -158,4 +158,5 @@ ssl/
 
 # Local configuration
 .claude/
-*.local
+*.localbackend.log
+nul
