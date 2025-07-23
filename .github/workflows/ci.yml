@@ -90,8 +90,8 @@ jobs:
     
     - name: Test Docker Compose
       run: |
-        docker-compose up -d
+        docker compose up -d
         sleep 30
         curl -f http://localhost:3001/api/health || exit 1
         curl -f http://localhost:80 || exit 1
-        docker-compose down
+        docker compose down
