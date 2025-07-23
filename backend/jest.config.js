@@ -31,11 +31,13 @@ module.exports = {
     }
   },
   setupFilesAfterEnv: ['<rootDir>/src/tests/setup.ts'],
-  testTimeout: 10000,
+  testTimeout: 30000,
   verbose: true,
   forceExit: true,
   detectOpenHandles: false,
   maxWorkers: 1,
+  runInBand: true,
+  workerIdleMemoryLimit: '512MB',
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true

@@ -22,3 +22,15 @@ global.console = {
 
 // Increase test timeout for CI environments
 jest.setTimeout(30000);
+
+// Clean up after each test
+afterEach(() => {
+  jest.clearAllMocks();
+});
+
+// Force garbage collection if available
+if (global.gc) {
+  afterEach(() => {
+    global.gc();
+  });
+}
