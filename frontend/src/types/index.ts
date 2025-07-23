@@ -150,259 +150,132 @@ export interface AnalysisMetrics {
   technicalDebtRatio: number;
 }
 
-// Frontend-specific types
-export interface UIState {
-  loading: boolean;
-  error: string | null;
-  success: string | null;
-}
-
-export interface ProjectListState extends UIState {
-  projects: Project[];
-  pagination: {
-    total: number;
-    limit: number;
-    offset: number;
-    hasMore: boolean;
-  };
-  filters: {
-    status?: string;
-    search?: string;
-  };
-}
-
-export interface ProjectDetailState extends UIState {
-  project: Project | null;
-  analysis: AnalysisData | null;
-  analysisStatus: AnalysisStatus | null;
-}
-
-export interface VisualizationState {
-  selectedNode: string | null;
-  selectedEdge: string | null;
-  filters: {
-    nodeTypes: string[];
-    edgeTypes: string[];
-    technologies: string[];
-  };
-  layout: 'force' | 'hierarchical' | 'circular';
-  zoom: number;
-  center: { x: number; y: number };
-}
-
-// API Response types
-export interface APIError {
-  code: string;
-  message: string;
-  details?: any;
-}
-
+// API Response Types
 export interface APIResponse<T = any> {
   success: boolean;
   data?: T;
-  error?: APIError;
+  error?: {
+    code: string;
+    message: string;
+    details?: any;
+  };
   timestamp: string;
 }
 
-// Form types
-export interface CreateProjectForm {
-  name: string;
-  repositoryUrl: string;
-  repositoryType: 'single' | 'multi';
-  branch?: string;
+export interface PaginatedResponse<T = any> {
+  success: boolean;
+  data: {
+    items: T[];
+    pagination: {
+      total: number;
+      limit: number;
+      offset: number;
+      hasMore: boolean;
+    };
+  };
+  timestamp: string;
 }
 
-export interface AnalysisOptionsForm {
+// File System Types
+export interface FileInfo {
+  name: string;
+  path: string;
+  relativePath: string;
+  extension: string;
+  size: number;
+  isDirectory: boolean;
+  lastModified: Date;
+}
+
+// Git Types
+export interface GitInfo {
+  branch: string;
+  commit: string;
+  author: string;
+  message: string;
+  timestamp: Date;
+}
+
+// Configuration Types
+export interface AnalysisOptions {
   branch?: string;
   depth?: number;
   includeTests?: boolean;
   excludePatterns?: string[];
+  includePatterns?: string[];
   languages?: string[];
   frameworks?: string[];
+  maxFileSize?: number;
+  timeout?: number;
 }
 
-// Chart data types
-export interface ChartData {
-  labels: string[];
-  datasets: Array<{
-    label: string;
-    data: number[];
-    backgroundColor?: string | string[];
-    borderColor?: string | string[];
-    borderWidth?: number;
-  }>;
+// Export and Report Types
+export interface ExportOptions {
+  format: 'json' | 'csv' | 'pdf' | 'png' | 'svg';
+  sections?: string[];
+  includeCharts?: boolean;
+  includeDetails?: boolean;
 }
 
-export interface MetricTrend {
-  date: string;
-  value: number;
-  label?: string;
+export interface ReportData {
+  project: Project;
+  analysis: AnalysisData;
+  generatedAt: Date;
+  options: ExportOptions;
 }
 
-// Navigation types
-export interface NavItem {
-  id: string;
-  label: string;
-  path: string;
-  icon?: string;
-  badge?: string | number;
-  children?: NavItem[];
-}
-
-// Theme types
-export interface Theme {
+// Error Types
+export interface AppErrorType {
   name: string;
-  colors: {
-    primary: string;
-    secondary: string;
-    success: string;
-    warning: string;
-    error: string;
-    background: string;
-    surface: string;
-    text: string;
-    textSecondary: string;
-  };
-  spacing: {
-    xs: string;
-    sm: string;
-    md: string;
-    lg: string;
-    xl: string;
-  };
-  borderRadius: {
-    sm: string;
-    md: string;
-    lg: string;
-  };
+  message: string;
+  statusCode: number;
+  isOperational: boolean;
+  stack?: string;
 }
 
-// Component props types
-export interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
-  loading?: boolean;
-  disabled?: boolean;
-  onClick?: () => void;
-  children: React.ReactNode;
-  className?: string;
-}
-
-export interface InputProps {
-  label?: string;
-  placeholder?: string;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string;
-  disabled?: boolean;
-  required?: boolean;
-  type?: 'text' | 'email' | 'password' | 'url';
-  className?: string;
-}
-
-export interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title?: string;
-  children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  className?: string;
-}
-
-// Hook types
-export interface UseAPIOptions {
-  immediate?: boolean;
-  onSuccess?: (data: any) => void;
-  onError?: (error: APIError) => void;
-}
-
-export interface UseAPIResult<T> {
-  data: T | null;
-  loading: boolean;
-  error: APIError | null;
-  execute: (...args: any[]) => Promise<T>;
-  reset: () => void;
-}
-
-// Store types (for state management)
-export interface AppStore {
-  // UI state
-  theme: Theme;
-  sidebarOpen: boolean;
-  notifications: Notification[];
-  
-  // User state
-  user: User | null;
-  isAuthenticated: boolean;
-  
-  // Project state
-  projects: Project[];
-  currentProject: Project | null;
-  
-  // Analysis state
-  currentAnalysis: AnalysisData | null;
-  analysisHistory: AnalysisResult[];
-  
-  // Actions
-  setTheme: (theme: Theme) => void;
-  toggleSidebar: () => void;
-  addNotification: (notification: Notification) => void;
-  removeNotification: (id: string) => void;
-  setCurrentProject: (project: Project | null) => void;
-  setCurrentAnalysis: (analysis: AnalysisData | null) => void;
-}
-
-export interface User {
+// Job Queue Types
+export interface AnalysisJob {
   id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  role: 'admin' | 'user';
-  preferences: {
-    theme: 'light' | 'dark' | 'auto';
-    language: string;
-    notifications: boolean;
-  };
-}
-
-export interface Notification {
-  id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-  title: string;
-  message?: string;
-  timestamp: Date;
-  read: boolean;
-  actions?: Array<{
-    label: string;
-    action: () => void;
-  }>;
-}
-
-// Utility types
-export type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-};
-
-export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
-
-export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>;
-
-// Event types
-export interface AnalysisProgressEvent {
   projectId: string;
+  type: 'full_analysis' | 'incremental_analysis' | 'dependency_update';
+  status: 'pending' | 'active' | 'completed' | 'failed';
   progress: number;
-  currentStep: string;
+  data: AnalysisOptions;
+  result?: AnalysisData;
+  error?: string;
+  createdAt: Date;
+  startedAt?: Date;
+  completedAt?: Date;
+}
+
+// WebSocket Types
+export interface WebSocketMessage {
+  type: 'analysis_progress' | 'analysis_complete' | 'analysis_error' | 'project_update';
+  projectId: string;
+  data: any;
   timestamp: Date;
 }
 
-export interface AnalysisCompleteEvent {
-  projectId: string;
-  result: AnalysisData;
-  timestamp: Date;
+// Multi-Repository Types
+export interface MultiRepositoryProject extends Project {
+  repositories: Repository[];
+  relationships: RepositoryRelationship[];
 }
 
-export interface AnalysisErrorEvent {
-  projectId: string;
-  error: string;
-  timestamp: Date;
+export interface Repository {
+  id: string;
+  name: string;
+  url: string;
+  branch: string;
+  type: 'frontend' | 'backend' | 'shared' | 'config' | 'docs';
+  status: 'pending' | 'analyzing' | 'completed' | 'failed';
+}
+
+export interface RepositoryRelationship {
+  id: string;
+  sourceRepo: string;
+  targetRepo: string;
+  type: 'api_dependency' | 'shared_library' | 'config_reference';
+  confidence: number;
+  evidence: string[];
 }

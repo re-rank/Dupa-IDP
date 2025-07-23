@@ -1,5 +1,5 @@
 import React from 'react';
-import { Project } from '../../../shared/types';
+import { Project } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { 
   GitBranch, 
@@ -107,7 +107,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         {/* Tags */}
         {project.tags && project.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-3">
-            {project.tags.slice(0, 3).map((tag, index) => (
+            {project.tags.slice(0, 3).map((tag: string, index: number) => (
               <span
                 key={index}
                 className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"

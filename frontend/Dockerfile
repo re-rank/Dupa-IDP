@@ -11,6 +11,8 @@ RUN npm install && npm cache clean --force
 
 # Copy source code
 COPY . .
+# Copy types from shared
+COPY src/types ./src/types
 
 # Build the application
 RUN npm run build

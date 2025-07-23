@@ -28,7 +28,7 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
-    let pollInterval: NodeJS.Timeout | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
 
     const startPolling = () => {
       // Try WebSocket first, fallback to polling

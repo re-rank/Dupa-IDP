@@ -10,11 +10,14 @@ COPY tsconfig.json ./
 # Install all dependencies (including dev deps for build)
 RUN npm install && npm cache clean --force
 
-# Copy source code
+# Copy source code and test setup
 COPY src/ ./src/
+COPY jest.config.js ./
 
-# Build the application
-RUN npm run build
+# Debug and build the application
+RUN ls -la && \
+    npx tsc --version && \
+    npm run build
 
 # Production stage
 FROM node:20-alpine AS production
@@ -32,7 +35,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm install --only=production && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
