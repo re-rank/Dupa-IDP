@@ -21,7 +21,8 @@
       "Bash(npm test:*)",
       "Bash(npm run lint)",
       "Bash(npm run test:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(sqlite3:*)"
     ],
     "deny": []
   }

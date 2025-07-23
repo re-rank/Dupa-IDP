@@ -96,6 +96,8 @@ router.get('/:id',
 router.post('/', 
   validate({ body: createProjectSchema }),
   asyncHandler(async (req: Request, res: Response) => {
+    try {
+      console.log('Create project request body:', req.body);
     const { name, repositoryUrl, repositoryType, branch } = req.body;
 
     // Check if project with same repository URL already exists
@@ -127,6 +129,10 @@ router.post('/',
       message: 'Project created successfully',
       timestamp: new Date().toISOString()
     });
+    } catch (error) {
+      console.error('Project creation error:', error);
+      throw error;
+    }
   })
 );
 

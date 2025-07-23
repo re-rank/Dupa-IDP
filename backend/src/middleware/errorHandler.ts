@@ -21,8 +21,19 @@ export const errorHandler = (
     url: req.url,
     method: req.method,
     ip: req.ip,
-    userAgent: req.get('User-Agent')
+    userAgent: req.get('User-Agent'),
+    body: req.body,
+    stack: err.stack
   });
+  
+  // In development, also log to console
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Error Details:', {
+      message: err.message,
+      stack: err.stack,
+      body: req.body
+    });
+  }
 
   // Send error response
   res.status(statusCode).json({
